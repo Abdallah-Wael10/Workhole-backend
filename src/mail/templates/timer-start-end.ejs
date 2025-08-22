@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer Started - WorkHole</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .timer-info { background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .footer { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
+        .btn { display: inline-block; padding: 12px 24px; background-color: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { text-align: center; padding: 15px; background-color: #ecf0f1; border-radius: 5px; margin: 0 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Timer Started!</h1>
+            <p>Focus time begins now</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hello <%= employee.firstName %> <%= employee.lastName %>!</h2>
+            
+            <p>Your focus timer has been started successfully. Time to get productive! 💪</p>
+            
+            <div class="timer-info">
+                <h3>📋 Timer Details:</h3>
+                <p><strong>Task:</strong> <%= tag %></p>
+                <p><strong>Duration:</strong> <%= duration %> minutes</p>
+                <p><strong>Started at:</strong> <%= startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                <p><strong>Expected completion:</strong> <%= new Date(startTime.getTime() + duration * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <h4>🕐 Duration</h4>
+                    <p><%= duration %> min</p>
+                </div>
+                <div class="stat">
+                    <h4>⏰ Start Time</h4>
+                    <p><%= startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                </div>
+            </div>
+            
+            <h3>💡 Tips for Better Focus:</h3>
+            <ul>
+                <li>Turn off notifications on your devices</li>
+                <li>Keep a glass of water nearby</li>
+                <li>Take notes of your progress</li>
+                <li>Don't check social media</li>
+            </ul>
+            
+            <p><strong>Stay focused and make this session count! 🚀</strong></p>
+        </div>
+        
+        <div class="footer">
+            <p>WorkHole - Productivity Management System</p>
+            <p>Keep tracking, keep improving! 📈</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Check-Out Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .header { background-color: #17a2b8; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; margin: -20px -20px 20px -20px; }
+        .attendance-info { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .time-summary { background-color: #d1ecf1; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .working-hours { text-align: center; background-color: #e3f2fd; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; }
+        .success-icon { font-size: 48px; color: #17a2b8; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚪 Check-Out Successful</h1>
+            <p>Day Completed</p>
+        </div>
+
+        <div class="success-icon">
+            🏁
+        </div>
+
+        <div class="attendance-info">
+            <h3>👤 Employee Details</h3>
+            <p><strong>Name:</strong> <%= employee.fullName %></p>
+            <p><strong>Email:</strong> <%= employee.email %></p>
+            <p><strong>Role:</strong> <%= employee.role.toUpperCase() %></p>
+            <p><strong>Date:</strong> <%= new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></p>
+        </div>
+
+        <div class="time-summary">
+            <h3>⏰ Time Summary</h3>
+            <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                <div style="text-align: center; flex: 1;">
+                    <strong>Check-In</strong><br>
+                    <span style="color: #28a745; font-size: 18px;"><%= new Date(checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></span>
+                </div>
+                <div style="text-align: center; flex: 1;">
+                    <strong>Check-Out</strong><br>
+                    <span style="color: #17a2b8; font-size: 18px;"><%= new Date(checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="working-hours">
+            <h3>📊 Working Hours</h3>
+            <% 
+            const checkIn = new Date(checkInTime);
+            const checkOut = new Date(checkOutTime);
+            const diffMs = checkOut - checkIn;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            %>
+            <h2 style="color: #17a2b8; margin: 10px 0;"><%= diffHours %>h <%= diffMinutes %>m</h2>
+            <p>Great work today! 🎉</p>
+        </div>
+
+        <% if (note) { %>
+        <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h4>📝 Note:</h4>
+            <p><%= note %></p>
+        </div>
+        <% } %>
+
+        <div style="background-color: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h4>👋 Thank You!</h4>
+            <p>• Your attendance has been recorded successfully</p>
+            <p>• Have a great evening!</p>
+        </div>
+
+        <div class="footer">
+            <p>ERP System | Attendance Management</p>
+            <p style="font-size: 12px;">This is an automated notification</p>
+        </div>
+    </div>
+</body>
+</html>

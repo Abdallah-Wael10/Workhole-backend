@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Break Started - WorkHole</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .break-info { background-color: #e8f4fd; border-left: 4px solid #6c5ce7; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .footer { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>☕ Break Started!</h1>
+            <p>Time to recharge and refresh</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hello <%= employee.firstName %>!</h2>
+            
+            <p>Your break has started successfully. Enjoy your time! 😊</p>
+            
+            <div class="break-info">
+                <h3>📋 Break Details:</h3>
+                <p><strong>Type:</strong> <%= breakType %></p>
+                <p><strong>Duration:</strong> <%= duration %> minutes</p>
+                <p><strong>Started at:</strong> <%= startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                <p><strong>Expected end:</strong> <%= new Date(startTime.getTime() + duration * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+            </div>
+            
+            <h3>💡 Make the most of your break:</h3>
+            <ul>
+                <li>Stay hydrated 💧</li>
+                <li>Stretch your body 🤸‍♂️</li>
+                <li>Take deep breaths 🌬️</li>
+                <li>Relax your mind 🧘‍♀️</li>
+            </ul>
+            
+            <p><strong>Remember to return on time to stay productive! ⏰</strong></p>
+        </div>
+        
+        <div class="footer">
+            <p>WorkHole - Employee Management System</p>
+            <p>Taking care of your well-being! 💜</p>
+        </div>
+    </div>
+</body>
+</html>

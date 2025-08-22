@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Break Completed - WorkHole</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .summary-box { background-color: #d1f2eb; border-left: 4px solid #00b894; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .footer { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
+        .success { color: #00b894; font-weight: bold; }
+        .warning { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Break Completed!</h1>
+            <p>Welcome back to work</p>
+        </div>
+        
+        <div class="content">
+            <h2>Welcome back, <%= employee.firstName %>! 👋</h2>
+            
+            <p>Your break has been completed. Here's your summary:</p>
+            
+            <div class="summary-box">
+                <h3>📊 Break Summary:</h3>
+                <p><strong>Break Type:</strong> <%= breakType %></p>
+                <p><strong>Planned Duration:</strong> <%= duration %> minutes</p>
+                <p><strong>Actual Duration:</strong> 
+                    <span class="<%= actualDuration <= duration ? 'success' : 'warning' %>">
+                        <%= actualDuration %> minutes
+                    </span>
+                </p>
+                <p><strong>Started:</strong> <%= startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                <p><strong>Ended:</strong> <%= endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                
+                <% if (actualDuration <= duration) { %>
+                <p class="success">🎯 Perfect! You returned on time.</p>
+                <% } else { %>
+                <p class="warning">⚠️ Break exceeded by <%= actualDuration - duration %> minutes.</p>
+                <% } %>
+            </div>
+            
+            <h3>🚀 Ready to be productive?</h3>
+            <p>Hope you feel refreshed and ready to tackle your tasks. Remember, regular breaks help maintain focus and energy throughout the day!</p>
+            
+            <% if (actualDuration <= duration) { %>
+            <p>Keep up the great time management! 👏</p>
+            <% } else { %>
+            <p>Please try to be more mindful of break timing in the future. ⏰</p>
+            <% } %>
+        </div>
+        
+        <div class="footer">
+            <p>WorkHole - Employee Management System</p>
+            <p>Back to productivity! 💼</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Break Warning - WorkHole</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .warning-box { background-color: #fff3cd; border-left: 4px solid #fdcb6e; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .footer { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⏰ Break Almost Over!</h1>
+            <p>1 minute remaining</p>
+        </div>
+        
+        <div class="content">
+            <h2>Hi <%= employee.firstName %>!</h2>
+            
+            <div class="warning-box">
+                <h3>🚨 Break Time Alert:</h3>
+                <p><strong>Break Type:</strong> <%= breakType %></p>
+                <p><strong>Time Remaining:</strong> 1 minute ⏱️</p>
+                <p><strong>Started at:</strong> <%= startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                <p><strong>Should end at:</strong> <%= new Date(startTime.getTime() + duration * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+            </div>
+            
+            <p>⚡ <strong>Time to wrap up and get ready to return to work!</strong></p>
+            
+            <p>Please finish your break and return to your workstation. Remember, staying on schedule helps maintain productivity for everyone! 💪</p>
+        </div>
+        
+        <div class="footer">
+            <p>WorkHole - Employee Management System</p>
+            <p>Helping you stay on track! ⏰</p>
+        </div>
+    </div>
+</body>
+</html>

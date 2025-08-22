@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer Completed - WorkHole</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; }
+        .timer-summary { background-color: #d4edda; border-left: 4px solid #28a745; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .footer { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { text-align: center; padding: 15px; background-color: #f8f9fa; border-radius: 5px; margin: 0 5px; }
+        .success { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Timer Completed!</h1>
+            <p>Great job on your focus session!</p>
+        </div>
+        
+        <div class="content">
+            <h2>Congratulations <%= employee.firstName %>! 🎉</h2>
+            
+            <p>You've successfully completed your focus session. Here's your summary:</p>
+            
+            <div class="timer-summary">
+                <h3>📊 Session Summary:</h3>
+                <p><strong>Task:</strong> <%= tag %></p>
+                <p><strong>Planned Duration:</strong> <%= duration %> minutes</p>
+                <p><strong>Actual Duration:</strong> <span class="success"><%= actualDuration %> minutes</span></p>
+                <p><strong>Started:</strong> <%= startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                <p><strong>Completed:</strong> <%= endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) %></p>
+                <% if (note) { %>
+                <p><strong>Notes:</strong> <%= note %></p>
+                <% } %>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <h4>⏱️ Focus Time</h4>
+                    <p><%= actualDuration %> min</p>
+                </div>
+                <div class="stat">
+                    <h4>🎯 Efficiency</h4>
+                    <p><%= Math.round((Math.min(actualDuration, duration) / duration) * 100) %>%</p>
+                </div>
+                <div class="stat">
+                    <h4>📅 Date</h4>
+                    <p><%= startTime.toLocaleDateString() %></p>
+                </div>
+            </div>
+            
+            <% if (actualDuration >= duration) { %>
+            <p class="success">🏆 Excellent! You completed the full session as planned!</p>
+            <% } else { %>
+            <p>💪 Good effort! Every minute of focus counts towards your productivity.</p>
+            <% } %>
+            
+            <h3>🚀 Keep the momentum going!</h3>
+            <p>Ready for your next focus session? Remember, consistency is key to building better focus habits.</p>
+        </div>
+        
+        <div class="footer">
+            <p>WorkHole - Productivity Management System</p>
+            <p>Your focus journey continues! 🎯</p>
+        </div>
+    </div>
+</body>
+</html>
