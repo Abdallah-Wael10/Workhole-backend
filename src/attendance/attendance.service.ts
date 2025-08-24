@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AttendanceLog, AttendanceLogDocument } from './attendance.schema';
 import { User, UserDocument } from '../users/users.schema';
 import { UserBreak, UserBreakDocument } from '../break/break.schema';
+import { OfficeLocation, OfficeLocationDocument } from './office-location.schema';
+import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service'; // Add import
 
 @Injectable()
 export class AttendanceService {
@@ -13,12 +16,35 @@ export class AttendanceService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(UserBreak.name)
     private userBreakModel: Model<UserBreakDocument>,
+    @InjectModel(OfficeLocation.name)
+    private officeLocationModel: Model<OfficeLocationDocument>,
+    private mailService: MailService,
+    private notificationsService: NotificationsService, // Inject NotificationsService
   ) {}
 
-  async clockIn(userId: string, location: 'office' | 'home' = 'office') {
-    const today = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+  async setOfficeLocation(latitude: number, longitude: number) {
+    await this.officeLocationModel.deleteMany({});
+    return this.officeLocationModel.create({ latitude, longitude });
+  }
+
+  private getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371000; // meters
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  async clockIn(userId: string, latitude: number, longitude: number) {
+    const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    const clockInTime = now.toTimeString().slice(0, 5); // "HH:mm"
+    const clockInTime = now.toTimeString().slice(0, 5);
     const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
 
     // Check if already clocked in today
@@ -35,6 +61,21 @@ export class AttendanceService {
     const shiftStart = user?.shiftStartLocal || '09:00';
     const isLate = clockInTime > shiftStart;
 
+    // Get office location
+    const office = await this.officeLocationModel.findOne();
+    let location: 'office' | 'home' = 'home';
+    let warning: string | undefined = undefined;
+    if (office) {
+      const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
+      if (distance <= 50) {
+        location = 'office';
+      } else {
+        warning = 'You are not at the office location. Marked as work from home.';
+      }
+    } else {
+      warning = 'Office location not set. Marked as work from home.';
+    }
+
     const attendance = await this.attendanceModel.findOneAndUpdate(
       { userId, date: today },
       {
@@ -48,12 +89,26 @@ export class AttendanceService {
       { upsert: true, new: true },
     );
 
-    return attendance;
+    // Send clock-in email
+    this.mailService.sendClockInEmail({
+      userId: user,
+      checkInTime: now,
+      date: today,
+      location,
+      status: isLate ? 'late' : 'present',
+      warning,
+    });
+
+    // Notify user
+    await this.notificationsService.notifyClockIn(userId, location, isLate);
+
+    return { attendance, warning };
   }
 
-  async clockOut(userId: string) {
+  async clockOut(userId: string, latitude: number, longitude: number) {
     const today = new Date().toISOString().split('T')[0];
-    const clockOutTime = new Date().toTimeString().slice(0, 5); // "HH:mm"
+    const now = new Date();
+    const clockOutTime = now.toTimeString().slice(0, 5);
 
     const attendance = await this.attendanceModel.findOne({
       userId,
@@ -64,6 +119,21 @@ export class AttendanceService {
     }
     if (attendance.clockOut) {
       throw new Error('Already clocked out today');
+    }
+
+    // Get office location
+    const office = await this.officeLocationModel.findOne();
+    let location: 'office' | 'home' = 'home';
+    let warning: string | undefined = undefined;
+    if (office) {
+      const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
+      if (distance <= 50) {
+        location = 'office';
+      } else {
+        warning = 'You are not at the office location. Marked as work from home.';
+      }
+    } else {
+      warning = 'Office location not set. Marked as work from home.';
     }
 
     // Calculate work minutes
@@ -80,9 +150,25 @@ export class AttendanceService {
     attendance.clockOut = clockOutTime;
     attendance.workMinutes = workMinutes;
     attendance.isOvertime = isOvertime;
+    attendance.location = location;
     await attendance.save();
 
-    return attendance;
+    // Send clock-out email
+    this.mailService.sendClockOutEmail({
+      userId: user,
+      checkInTime: attendance.clockIn,
+      checkOutTime: now,
+      date: today,
+      workMinutes,
+      location,
+      isOvertime,
+      warning,
+    });
+
+    // Notify user
+    await this.notificationsService.notifyClockOut(userId, workMinutes, isOvertime);
+
+    return { attendance, warning };
   }
 
   async getDashboard(userId: string) {
@@ -213,13 +299,23 @@ export class AttendanceService {
       workHoursChart: chartData,
     };
   }
-
-  async getStats(userId: string) {
+ 
+  async getStats(userId: string, page = 1, limit = 8) {
     const monthStart = new Date();
     monthStart.setDate(1);
     const monthStartStr = monthStart.toISOString().split('T')[0];
 
-    const monthAttendance = await this.attendanceModel.find({
+    const skip = (page - 1) * limit;
+
+    // Get paginated logs
+    const monthAttendance = await this.attendanceModel
+      .find({ userId, date: { $gte: monthStartStr } })
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Get total count for pagination
+    const totalCount = await this.attendanceModel.countDocuments({
       userId,
       date: { $gte: monthStartStr },
     });
@@ -262,6 +358,12 @@ export class AttendanceService {
       lateArrivals,
       avgClockIn,
       attendanceLogs,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
     };
   }
 

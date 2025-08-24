@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Inject,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -10,6 +11,7 @@ import { User, UserDocument } from '../users/users.schema';
 import { CreateTimerDto } from './dto/create-timer.dto';
 import { CompleteTimerDto, UpdateTimerDto } from './dto/update-timer.dto';
 import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service'; // Add import
 
 @Injectable()
 export class TimerService {
@@ -17,6 +19,7 @@ export class TimerService {
     @InjectModel(Timer.name) private timerModel: Model<TimerDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private mailService: MailService,
+    private notificationsService: NotificationsService, // Inject NotificationsService
   ) {}
 
   async startTimer(userId: string, dto: CreateTimerDto) {
@@ -54,9 +57,12 @@ export class TimerService {
         duration: dto.duration,
         startTime: timer.startTime,
       });
-
-      // Mark email as sent
       await this.timerModel.findByIdAndUpdate(timer._id, { emailSent: true });
+      await this.notificationsService.notifyTimerStarted(
+        userId,
+        dto.tag,
+        dto.duration,
+      );
     } catch (error) {
       console.error('Failed to send timer start email:', error);
     }
@@ -124,6 +130,11 @@ export class TimerService {
       await this.timerModel.findByIdAndUpdate(timerId, {
         completionEmailSent: true,
       });
+      await this.notificationsService.notifyTimerCompleted(
+        userId,
+        updatedTimer.tag,
+        updatedTimer.actualDuration || 0,
+      );
     } catch (error) {
       console.error('Failed to send timer completion email:', error);
     }
@@ -175,6 +186,8 @@ export class TimerService {
     if (!updatedTimer) {
       throw new NotFoundException('Failed to cancel timer');
     }
+
+    await this.notificationsService.notifyTimerCancelled(userId, timer.tag);
 
     return {
       id: updatedTimer._id,

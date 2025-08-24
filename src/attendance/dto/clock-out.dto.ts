@@ -1,3 +1,9 @@
+import { IsNumber } from 'class-validator';
+
 export class ClockOutDto {
-  // Empty for now, can add notes later
+  @IsNumber()
+  latitude: number;
+
+  @IsNumber()
+  longitude: number;
 }

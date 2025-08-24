@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { MailService } from '../mail/mail.service';
@@ -11,6 +11,7 @@ import {
 } from './break.schema';
 import { CreateBreakDto } from './dto/create-break.dto';
 import { UpdateBreakDto } from './dto/update-break.dto';
+import { NotificationsService } from '../notifications/notifications.service'; // Add import
 
 @Injectable()
 export class BreakService {
@@ -21,7 +22,8 @@ export class BreakService {
     private userBreakModel: Model<UserBreakDocument>,
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
-    private mailService: MailService, // أضف هذا
+    private mailService: MailService,
+    private notificationsService: NotificationsService, // Inject NotificationsService
   ) {}
 
   // Admin: Create break type
@@ -64,6 +66,7 @@ export class BreakService {
         duration: type.duration,
         startTime: userBreak.startTime,
       });
+      await this.notificationsService.notifyBreakStarted(userId, type.name, type.duration);
     } catch (error) {
       console.error('Failed to send break start email:', error);
     }
@@ -123,6 +126,7 @@ export class BreakService {
         startTime: ongoing.startTime,
         endTime: endTime,
       });
+      await this.notificationsService.notifyBreakEnded(userId, duration);
     } catch (error) {
       console.error('Failed to send break end email:', error);
     }
@@ -148,6 +152,7 @@ export class BreakService {
           duration: type.duration,
           startTime: userBreak.startTime,
         });
+        await this.notificationsService.notifyBreakWarning(userId, type.name);
       }
     } catch (error) {
       console.error('Failed to send break warning email:', error);
@@ -169,8 +174,6 @@ export class BreakService {
         const currentDuration = Math.round(
           (new Date().getTime() - userBreak.startTime.getTime()) / 60000,
         );
-
-        // إرسال الإيميل فور انتهاء الوقت المحدد (بدون شرط التجاوز)
         await this.mailService.sendBreakExceedEmail({
           userId: user,
           breakType: type.name,
@@ -178,6 +181,7 @@ export class BreakService {
           currentDuration: currentDuration,
           startTime: userBreak.startTime,
         });
+        await this.notificationsService.notifyBreakExceeded(userId, type.name);
       }
     } catch (error) {
       console.error('Failed to send break exceed email:', error);
@@ -277,6 +281,23 @@ export class BreakService {
   // Admin/User: List all breaks (with filters)
   async listBreaks(query: any) {
     return this.userBreakModel.find(query).sort({ startTime: -1 });
+  }
+
+  async listBreaksPaginated(query: any, page = 1, limit = 4) {
+    const skip = (page - 1) * limit;
+    const [breaks, total] = await Promise.all([
+      this.userBreakModel.find(query).sort({ startTime: -1 }).skip(skip).limit(limit),
+      this.userBreakModel.countDocuments(query),
+    ]);
+    return {
+      breaks,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   public formatMinutes(minutes: number): string {

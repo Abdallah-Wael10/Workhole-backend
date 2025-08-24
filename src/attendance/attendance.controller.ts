@@ -5,6 +5,7 @@ import {
   Body,
   Request,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { ClockInDto } from './dto/clock-in.dto';
@@ -20,12 +21,12 @@ export class AttendanceController {
 
   @Post('clock-in')
   async clockIn(@Body() dto: ClockInDto, @Request() req) {
-    return this.attendanceService.clockIn(req.user.id, dto.location);
+    return this.attendanceService.clockIn(req.user.id, dto.latitude, dto.longitude);
   }
 
   @Post('clock-out')
   async clockOut(@Body() dto: ClockOutDto, @Request() req) {
-    return this.attendanceService.clockOut(req.user.id);
+    return this.attendanceService.clockOut(req.user.id, dto.latitude, dto.longitude);
   }
 
   @Get('me')
@@ -34,8 +35,8 @@ export class AttendanceController {
   }
 
   @Get('stats')
-  async getStats(@Request() req) {
-    return this.attendanceService.getStats(req.user.id);
+  async getStats(@Request() req, @Body() body, @Query('page') page = 1, @Query('limit') limit = 8) {
+    return this.attendanceService.getStats(req.user.id, Number(page), Number(limit));
   }
 
   // Admin: View all users attendance
@@ -44,5 +45,13 @@ export class AttendanceController {
   @Get('all')
   async getAllUsersAttendance() {
     return this.attendanceService.getAllUsersAttendance();
+  }
+
+  // Admin: Set office location
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Post('set-office-location')
+  async setOfficeLocation(@Body() body: { latitude: number; longitude: number }) {
+    return this.attendanceService.setOfficeLocation(body.latitude, body.longitude);
   }
 }

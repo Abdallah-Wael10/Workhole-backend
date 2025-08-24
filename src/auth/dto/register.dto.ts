@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsString,
   IsEmail,
@@ -29,6 +30,7 @@ export class RegisterDto {
   @IsEnum(['admin', 'employee'])
   role: 'admin' | 'employee';
 
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   @Min(0)
   shiftHours: number;
@@ -37,28 +39,18 @@ export class RegisterDto {
   @IsOptional()
   shiftStartLocal?: string;
 
-  @IsString()
-  @IsOptional()
-  locale?: string;
-
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
 
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   @Min(0)
   @IsOptional()
   salary?: number;
 
-  @IsString()
-  @IsOptional()
-  phone?: string;
-
-  @IsEnum(['active', 'suspended'])
-  @IsOptional()
-  status?: 'active' | 'suspended';
-
-  // New fields
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   @Min(0)
   @IsOptional()
@@ -67,4 +59,8 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   profileImage?: string;
+
+  @IsString()
+  @IsOptional()
+  locale?: string;
 }

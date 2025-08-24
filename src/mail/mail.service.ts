@@ -74,8 +74,6 @@ export class MailService {
     }
   }
 
-
-
   async sendTimerStartEmail(data: {
     userId: any;
     tag: string;
@@ -297,5 +295,189 @@ export class MailService {
     } catch (error) {
       console.error('Error sending break end email:', error);
     }
+  }
+
+  async sendClockInEmail(data: {
+    userId: any;
+    checkInTime: Date;
+    date: string;
+    location: 'office' | 'home';
+    status: string;
+    warning?: string;
+  }) {
+    try {
+      const templatePath = join(
+        process.cwd(),
+        'src',
+        'mail',
+        'templates',
+        'clock-in-notification.ejs',
+      );
+
+      const html = await ejs.renderFile(templatePath, {
+        employee: data.userId,
+        checkInTime: data.checkInTime,
+        date: data.date,
+        location: data.location,
+        status: data.status,
+        warning: data.warning,
+      });
+
+      await this.transporter.sendMail({
+        from: `"WorkHole" <${this.configService.get<string>('EMAIL_USER')}>`,
+        to: data.userId.email,
+        subject: `🔥 Clock In Successful - ${data.location === 'office' ? 'Office' : 'Work From Home'}`,
+        html,
+      });
+
+      console.log(`Clock-in email sent to ${data.userId.email}`);
+    } catch (error) {
+      console.error('Error sending clock-in email:', error);
+    }
+  }
+
+  async sendClockOutEmail(data: {
+    userId: any;
+    checkInTime: string;
+    checkOutTime: Date;
+    date: string;
+    workMinutes: number;
+    location: 'office' | 'home';
+    isOvertime: boolean;
+    warning?: string;
+  }) {
+    try {
+      const templatePath = join(
+        process.cwd(),
+        'src',
+        'mail',
+        'templates',
+        'clock-out-notification.ejs',
+      );
+
+      const html = await ejs.renderFile(templatePath, {
+        employee: data.userId,
+        checkInTime: data.checkInTime,
+        checkOutTime: data.checkOutTime,
+        date: data.date,
+        workMinutes: data.workMinutes,
+        location: data.location,
+        isOvertime: data.isOvertime,
+        warning: data.warning,
+      });
+
+      await this.transporter.sendMail({
+        from: `"WorkHole" <${this.configService.get<string>('EMAIL_USER')}>`,
+        to: data.userId.email,
+        subject: `🏁 Clock Out Completed - ${Math.floor(data.workMinutes / 60)}h ${data.workMinutes % 60}m worked`,
+        html,
+      });
+
+      console.log(`Clock-out email sent to ${data.userId.email}`);
+    } catch (error) {
+      console.error('Error sending clock-out email:', error);
+    }
+  }
+
+  async sendLeaveRequestEmail(data: {
+    employee: any;
+    leaveType: string;
+    startDate: Date;
+    endDate: Date;
+    days: number;
+    reason: string;
+    attachmentUrl?: string;
+  }) {
+    const templatePath = join(
+      process.cwd(),
+      'src',
+      'mail',
+      'templates',
+      'leave-request-notification.ejs',
+    );
+    const html = await ejs.renderFile(templatePath, data);
+    await this.transporter.sendMail({
+      from: `"WorkHole" <${this.configService.get<string>('EMAIL_USER')}>`,
+      to: data.employee.email,
+      subject: `📋 Leave Request Submitted - Pending Approval`,
+      html,
+    });
+  }
+
+  async sendLeaveAdminNotification(data: {
+    employee: any;
+    leaveType: string;
+    startDate: Date;
+    endDate: Date;
+    days: number;
+    reason: string;
+    attachmentUrl?: string;
+    adminEmail: string;
+  }) {
+    const templatePath = join(
+      process.cwd(),
+      'src',
+      'mail',
+      'templates',
+      'leave-admin-notification.ejs',
+    );
+    const html = await ejs.renderFile(templatePath, data);
+    await this.transporter.sendMail({
+      from: `"WorkHole" <${this.configService.get<string>('EMAIL_USER')}>`,
+      to: data.adminEmail,
+      subject: `🚨 New Leave Request - Action Required`,
+      html,
+    });
+  }
+
+  async sendLeaveApprovedEmail(data: {
+    employee: any;
+    leaveType: string;
+    startDate: Date;
+    endDate: Date;
+    days: number;
+    reason: string;
+    attachmentUrl?: string;
+  }) {
+    const templatePath = join(
+      process.cwd(),
+      'src',
+      'mail',
+      'templates',
+      'leave-approved-notification.ejs',
+    );
+    const html = await ejs.renderFile(templatePath, data);
+    await this.transporter.sendMail({
+      from: `"WorkHole" <${this.configService.get<string>('EMAIL_USER')}>`,
+      to: data.employee.email,
+      subject: `✅ Leave Approved - ${data.leaveType}`,
+      html,
+    });
+  }
+
+  async sendLeaveRejectedEmail(data: {
+    employee: any;
+    leaveType: string;
+    startDate: Date;
+    endDate: Date;
+    days: number;
+    reason: string;
+    attachmentUrl?: string;
+    actionNote?: string;
+  }) {
+    const templatePath = join(
+      process.cwd(),
+      'src',
+      'mail',
+      'templates',
+      'leave-rejected-notification.ejs',
+    );
+    const html = await ejs.renderFile(templatePath, data);
+    await this.transporter.sendMail({
+      from: `"WorkHole" <${this.configService.get<string>('EMAIL_USER')}>`,
+      to: data.employee.email,
+      subject: `❌ Leave Rejected - ${data.leaveType}`,
+      html,
+    });
   }
 }

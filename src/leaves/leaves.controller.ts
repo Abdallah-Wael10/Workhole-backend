@@ -10,6 +10,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { LeavesService } from './leaves.service';
@@ -44,24 +45,39 @@ export class LeavesController {
 
   // Get my leaves
   @Get('me')
-  async getMyLeaves(@Request() req) {
-    const leaves: any[] = await this.leavesService.getUserLeaves(req.user.id);
-    return leaves.map((leave) => ({
-      id: leave._id,
-      leaveType: leave.leaveType,
-      startDate: leave.startDate.toISOString().split('T')[0],
-      endDate: leave.endDate.toISOString().split('T')[0],
-      days: leave.days,
-      status: leave.status,
-      reason: leave.reason,
-      attachmentUrl: leave.attachmentUrl,
-      actionBy: leave.actionBy
-        ? `${leave.actionBy.firstName} ${leave.actionBy.lastName}`
-        : null,
-      actionNote: leave.actionNote,
-      actionDate: leave.actionDate,
-      createdAt: leave.createdAt,
-    }));
+  async getMyLeaves(
+    @Request() req,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 6,
+  ) {
+    const result = await this.leavesService.getUserLeavesPaginated(
+      req.user.id,
+      Number(page),
+      Number(limit),
+    );
+    return {
+      leaves: result.leaves.map((leave) => ({
+        id: leave._id,
+        leaveType: leave.leaveType,
+        startDate: leave.startDate.toISOString().split('T')[0],
+        endDate: leave.endDate.toISOString().split('T')[0],
+        days: leave.days,
+        status: leave.status,
+        reason: leave.reason,
+        attachmentUrl: leave.attachmentUrl,
+        actionBy:
+          leave.actionBy &&
+          typeof leave.actionBy === 'object' &&
+          'firstName' in leave.actionBy &&
+          'lastName' in leave.actionBy
+            ? `${(leave.actionBy as any).firstName} ${(leave.actionBy as any).lastName}`
+            : null,
+        actionNote: leave.actionNote,
+        actionDate: leave.actionDate,
+        createdAt: leave.createdAt,
+      })),
+      pagination: result.pagination,
+    };
   }
 
   // Get leave statistics
@@ -103,9 +119,13 @@ export class LeavesController {
       status: leave.status,
       reason: leave.reason,
       attachmentUrl: leave.attachmentUrl,
-      actionBy: leave.actionBy
-        ? `${leave.actionBy.firstName} ${leave.actionBy.lastName}`
-        : null,
+      actionBy:
+        leave.actionBy &&
+        typeof leave.actionBy === 'object' &&
+        'firstName' in leave.actionBy &&
+        'lastName' in leave.actionBy
+          ? `${(leave.actionBy as any).firstName} ${(leave.actionBy as any).lastName}`
+          : null,
       actionNote: leave.actionNote,
       actionDate: leave.actionDate,
       createdAt: leave.createdAt,

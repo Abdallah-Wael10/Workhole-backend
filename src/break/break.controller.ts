@@ -49,7 +49,7 @@ export class BreakController {
     return this.breakService.startBreak(req.user.id, breakType);
   }
 
-  // User: Stop break
+  // User: Stop break 
   @Post('stop')
   async stopBreak(@Request() req) {
     return this.breakService.stopBreak(req.user.id);
@@ -77,31 +77,39 @@ export class BreakController {
 
   // User: All breaks with formatted data
   @Get('stats')
-  async getBreakStatsDetails(@Request() req, @Query() query) {
+  async getBreakStatsDetails(
+    @Request() req,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 4,
+    @Query() query
+  ) {
     const userId =
       req.user.role === 'admin' && query.userId ? query.userId : req.user.id;
-    const breaks = await this.breakService.listBreaks({ userId });
+    const result = await this.breakService.listBreaksPaginated({ userId }, Number(page), Number(limit));
 
-    return breaks.map((b) => ({
-      date: b.startTime.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      }), // "27 July 2023"
-      day: b.startTime.toLocaleDateString('en-US', { weekday: 'long' }), // "Monday"
-      breakType: b.breakType, // "Prayer"
-      duration: `${b.duration} min`, // "4 min"
-      startTime: b.startTime.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }), // "02:00 PM"
-      endTime: b.endTime
-        ? b.endTime.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : 'N/A', // "02:10 PM"
-      exceeded: b.exceeded,
-    }));
+    return {
+      breaks: result.breaks.map((b) => ({
+        date: b.startTime.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        }),
+        day: b.startTime.toLocaleDateString('en-US', { weekday: 'long' }),
+        breakType: b.breakType,
+        duration: `${b.duration} min`,
+        startTime: b.startTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        endTime: b.endTime
+          ? b.endTime.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : 'N/A',
+        exceeded: b.exceeded,
+      })),
+      pagination: result.pagination,
+    };
   }
 }

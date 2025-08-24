@@ -15,6 +15,7 @@ import { join } from 'path';
 import { LeavesModule } from './leaves/leaves.module';
 import { TimerModule } from './timerFoucs/timer.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 10,
+        limit: 7,
       },
     ]),
     AuthModule,
@@ -40,7 +41,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     LeavesModule,
     TimerModule,
     DashboardModule,
-
+    NotificationsModule,
+    
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'images'),
       serveRoot: '/images/',

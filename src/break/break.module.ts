@@ -10,6 +10,7 @@ import {
   UserBreak,
   UserBreakSchema,
 } from './break.schema';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import {
       { name: User.name, schema: UserSchema }, // أضف هذا
     ]),
     MailModule, // أضف هذا
+    NotificationsModule, // أضف هذا
   ],
   controllers: [BreakController],
   providers: [BreakService],

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Request Rejected - WorkHole</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; }
+        .email-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 40px 30px; text-align: center; position: relative; }
+        .header::after { content: ''; position: absolute; bottom: -10px; left: 0; right: 0; height: 20px; background: white; border-radius: 20px 20px 0 0; }
+        .logo { width: 60px; height: 56px; margin: 0 auto 20px; }
+        .main-icon { font-size: 60px; margin: 20px 0; display: block; }
+        .content { padding: 30px; }
+        .info-card { background: #f8d7da; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #dc3545; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; margin: 10px 0; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+        .leave-details { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; padding: 25px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 10px; background: white; border-radius: 8px; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #6c757d; }
+        .divider { height: 2px; background: linear-gradient(90deg, #dc3545, #c82333); margin: 20px 0; border-radius: 1px; }
+        .btn { display: inline-block; padding: 12px 30px; margin: 0 10px; text-decoration: none; border-radius: 25px; font-weight: bold; color: white; }
+        .btn-primary { background: linear-gradient(135deg, #007bff, #0056b3); }
+        .feedback-box { background: #fff3cd; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">
+                <svg width="60" height="56" viewBox="0 0 46 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M28.4078 0.0884229C24.3648 0.582314 20.2461 2.76894 16.3784 6.47473C16.0066 6.8308 15.7184 7.13809 15.7378 7.15742C15.7572 7.17675 15.8078 7.15874 15.8501 7.11743C17.6649 5.35249 20.9275 3.39524 23.393 2.59259C28.3487 0.979243 33.1477 2.499 35.2783 6.35624C37.9375 11.1699 37.7536 17.8686 34.7745 24.7241C28.2732 39.6847 13.1535 46.2718 7.33546 36.6784C6.8556 35.8873 6.93575 36.2495 7.48135 37.3379C10.742 43.8426 18.3837 44.8556 25.985 39.7908C36.5872 32.7264 43.008 17.4483 39.6187 7.35003C37.9082 2.2541 33.588 -0.54432 28.4078 0.0884229ZM0.0883109 12.3737C0.0712519 12.4177 0.148018 12.7902 0.258607 13.2014C0.369197 13.6129 0.613906 14.5302 0.80229 15.2401C0.990675 15.9501 1.34642 17.2883 1.59274 18.2143C1.83907 19.1403 2.19496 20.4787 2.38334 21.1886C2.57187 21.8986 2.83614 22.8834 2.97055 23.3772C3.10511 23.8711 3.34335 24.7676 3.49983 25.3694C3.65644 25.9713 3.84909 26.7036 3.92777 26.9968C4.0066 27.2901 4.1966 27.9971 4.35013 28.5681C4.50351 29.1391 4.72881 29.9851 4.85072 30.4481C4.97249 30.9111 5.15352 31.5929 5.25308 31.9633C5.35264 32.3337 5.46397 32.7504 5.50059 32.8893L5.5672 33.1418L7.76841 33.1564L9.96961 33.1711L10.1951 32.3708C10.4489 31.4697 10.4537 31.4952 10.0006 31.3493C8.65974 30.9175 7.87782 29.8352 7.28164 27.5861C7.0934 26.8761 6.81457 25.8282 6.66207 25.2572C6.50957 24.6862 6.28148 23.8276 6.1553 23.3492C5.94515 22.5527 5.10014 19.3685 4.77778 18.1582C4.62837 17.5975 4.29645 16.354 3.95395 15.0717C3.83027 14.6087 3.62497 13.826 3.49762 13.3321C3.37026 12.8382 3.24026 12.4026 3.20879 12.3641C3.11894 12.2542 0.130664 12.2635 0.0883109 12.3737Z" fill="white"/>
+                </svg>
+            </div>
+            <h1>❌ Leave Request Rejected</h1>
+            <span class="main-icon">📝</span>
+            <h2>Hello <%= employee.firstName %>,</h2>
+        </div>
+
+        <div class="content">
+            <div class="info-card">
+                <h3>❌ Leave Request Status Update</h3>
+                <p>We regret to inform you that your leave request has been <strong>rejected</strong>.</p>
+                <span class="status-badge status-rejected">✗ Rejected</span>
+            </div>
+
+            <% if (actionNote) { %>
+            <div class="feedback-box">
+                <h3>💬 Feedback from Administration</h3>
+                <p style="font-style: italic; margin-top: 10px;"><%= actionNote %></p>
+            </div>
+            <% } %>
+
+            <div class="leave-details">
+                <h3>📄 Leave Details</h3>
+                <div class="detail-row">
+                    <strong>Leave Type:</strong>
+                    <span><%= leaveType %></span>
+                </div>
+                <div class="detail-row">
+                    <strong>Start Date:</strong>
+                    <span><%= new Date(startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+                </div>
+                <div class="detail-row">
+                    <strong>End Date:</strong>
+                    <span><%= new Date(endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+                </div>
+                <div class="detail-row">
+                    <strong>Duration:</strong>
+                    <span><%= days %> day(s)</span>
+                </div>
+                <div class="detail-row">
+                    <strong>Reason:</strong>
+                    <span><%= reason %></span>
+                </div>
+                <% if (attachmentUrl) { %>
+                <div class="detail-row">
+                    <strong>Attachment:</strong>
+                    <span>📎 File attached</span>
+                </div>
+                <% } %>
+            </div>
+
+            <div class="divider"></div>
+
+            <div style="background: #e3f2fd; border-radius: 12px; padding: 20px; text-align: center;">
+                <h4>📋 Next Steps</h4>
+                <p>If you wish to discuss this decision or submit a new request with different dates, please contact your supervisor or the HR department.</p>
+                <div style="margin-top: 20px;">
+                    <a href="#" class="btn btn-primary">Submit New Request</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="logo" style="margin-bottom: 15px;">
+                <svg width="46" height="43" viewBox="0 0 46 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M28.4078 0.0884229C24.3648 0.582314 20.2461 2.76894 16.3784 6.47473C16.0066 6.8308 15.7184 7.13809 15.7378 7.15742C15.7572 7.17675 15.8078 7.15874 15.8501 7.11743C17.6649 5.35249 20.9275 3.39524 23.393 2.59259C28.3487 0.979243 33.1477 2.499 35.2783 6.35624C37.9375 11.1699 37.7536 17.8686 34.7745 24.7241C28.2732 39.6847 13.1535 46.2718 7.33546 36.6784C6.8556 35.8873 6.93575 36.2495 7.48135 37.3379C10.742 43.8426 18.3837 44.8556 25.985 39.7908C36.5872 32.7264 43.008 17.4483 39.6187 7.35003C37.9082 2.2541 33.588 -0.54432 28.4078 0.0884229Z" fill="#dc3545"/>
+                </svg>
+            </div>
+            <h3>WorkHole</h3>
+            <p>Leave Management System</p>
+            <p style="font-size: 12px; margin-top: 10px;">This is an automated notification from WorkHole system</p>
+        </div>
+    </div>
+</body>
+</html>

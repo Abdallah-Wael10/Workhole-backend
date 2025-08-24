@@ -5,6 +5,7 @@ import { TimerService } from './timer.service';
 import { Timer, TimerSchema } from './timer.schema';
 import { User, UserSchema } from '../users/users.schema';
 import { MailModule } from '../mail/mail.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MailModule } from '../mail/mail.module';
       { name: User.name, schema: UserSchema },
     ]),
     MailModule,
+    NotificationsModule,
   ],
   controllers: [TimerController],
   providers: [TimerService],

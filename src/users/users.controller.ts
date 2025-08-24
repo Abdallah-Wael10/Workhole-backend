@@ -8,7 +8,6 @@ import {
   Param,
   UseGuards,
   Request,
-  ForbiddenException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,7 +25,7 @@ export class UsersController {
   @Get(':id')
   async findOne(@Param('id') id: string, @Request() req) {
     return this.usersService.findOne(id, req.user.role);
-  }  
+  }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body() dto, @Request() req) {
