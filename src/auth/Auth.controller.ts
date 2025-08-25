@@ -17,6 +17,7 @@ import { ForgetPasswordDto } from './dto/forget-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { profileImageMulterConfig } from '../middleware/multer-config.middleware';
+import { UpdateUserDto } from '../users/dto/update-user.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -62,5 +63,16 @@ export class AuthController {
     @Request() req,
   ) {
     return this.authService.updateProfileImage(req.user.id, file);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('update-profile')
+  @UseInterceptors(FileInterceptor('profileImage', profileImageMulterConfig))
+  async updateProfile(
+    @Body() dto: UpdateUserDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req,
+  ) {
+    return this.authService.updateProfileData(req.user.id, dto, file);
   }
 }

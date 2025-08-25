@@ -14,6 +14,7 @@ import { MailService } from '../mail/mail.service';
 import { ForgetPasswordDto } from './dto/forget-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PasswordReset } from './password-reset.schema';
+import { UpdateUserDto } from '../users/dto/update-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -160,6 +161,47 @@ export class AuthService {
     return {
       message: 'Profile image updated successfully',
       profileImage: user.profileImage,
+    };
+  }
+
+  async updateProfileData(
+    userId: string,
+    dto: UpdateUserDto,
+    file?: Express.Multer.File,
+  ) {
+    const update: any = {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      phone: dto.phone,
+    };
+
+    if (file && file.filename) {
+      update.profileImage = `/images/profileImages/${file.filename}`;
+    }
+
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, update, { new: true })
+      .select('-passwordHash');
+
+    if (!user) throw new Error('User not found');
+
+    return {
+      message: 'Profile updated successfully',
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        email: user.email,
+        role: user.role,
+        shiftHours: user.shiftHours,
+        locale: user.locale,
+        isActive: user.isActive,
+        availableLeaves: user.availableLeaves,
+        status: user.status,
+        salary: user.salary,
+        shiftStartLocal: user.shiftStartLocal,
+      },
     };
   }
 }

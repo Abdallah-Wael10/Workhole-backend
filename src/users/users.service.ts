@@ -76,16 +76,16 @@ export class UsersService {
       throw new ForbiddenException('Only Admin and HR can update users');
     }
 
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
-    }
-
     const user = await this.userModel
       .findByIdAndUpdate(id, updateUserDto, { new: true })
       .select('-password')
       .exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  async updateUser(id: string, updateUserDto: UpdateUserDto) {
+    return this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true });
   }
 
   async remove(
