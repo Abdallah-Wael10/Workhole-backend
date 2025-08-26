@@ -283,12 +283,49 @@ export class BreakService {
     return this.userBreakModel.find(query).sort({ startTime: -1 });
   }
 
-  async listBreaksPaginated(query: any, page = 1, limit = 4) {
+  async listBreaksPaginated(
+    query: any, 
+    page = 1, 
+    limit = 4, 
+    sortBy = 'newest',
+    dateFilter = '',
+    typeFilter = ''
+  ) {
+    // Build the base query
+    let baseQuery = { ...query, endTime: { $ne: null } };
+
+    // Apply date filter
+    if (dateFilter) {
+      const selectedDate = new Date(dateFilter);
+      const nextDay = new Date(selectedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      baseQuery.startTime = {
+        $gte: selectedDate,
+        $lt: nextDay
+      };
+    }
+
+    // Apply type filter
+    if (typeFilter) {
+      baseQuery.breakType = typeFilter;
+    }
+
+    // Determine sort order
+    const sortOrder = sortBy === 'oldest' ? 1 : -1;
+
     const skip = (page - 1) * limit;
-    const [breaks, total] = await Promise.all([
-      this.userBreakModel.find(query).sort({ startTime: -1 }).skip(skip).limit(limit),
-      this.userBreakModel.countDocuments(query),
+    
+    const [breaks, total, availableFilters] = await Promise.all([
+      this.userBreakModel
+        .find(baseQuery)
+        .sort({ startTime: sortOrder })
+        .skip(skip)
+        .limit(limit),
+      this.userBreakModel.countDocuments(baseQuery),
+      this.getAvailableFilters(query.userId) // جلب الفلاتر المتاحة
     ]);
+
     return {
       breaks,
       pagination: {
@@ -297,6 +334,29 @@ export class BreakService {
         total,
         totalPages: Math.ceil(total / limit),
       },
+      availableFilters
+    };
+  }
+
+  // دالة جديدة لجلب الفلاتر المتاحة
+  async getAvailableFilters(userId: string) {
+    const allBreaks = await this.userBreakModel
+      .find({ userId, endTime: { $ne: null } })
+      .sort({ startTime: -1 });
+
+    const uniqueDates = [...new Set(allBreaks.map(b => 
+      b.startTime.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'long', 
+        year: 'numeric',
+      })
+    ))];
+
+    const uniqueTypes = [...new Set(allBreaks.map(b => b.breakType))];
+
+    return {
+      dates: uniqueDates,
+      types: uniqueTypes
     };
   }
 

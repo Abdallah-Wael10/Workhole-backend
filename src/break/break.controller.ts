@@ -81,11 +81,22 @@ export class BreakController {
     @Request() req,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 4,
+    @Query('sortBy') sortBy: string = 'newest',
+    @Query('date') date: string = '',
+    @Query('type') type: string = '',
     @Query() query
   ) {
     const userId =
       req.user.role === 'admin' && query.userId ? query.userId : req.user.id;
-    const result = await this.breakService.listBreaksPaginated({ userId }, Number(page), Number(limit));
+    
+    const result = await this.breakService.listBreaksPaginated(
+      { userId }, 
+      Number(page), 
+      Number(limit),
+      sortBy,
+      date,
+      type
+    );
 
     return {
       breaks: result.breaks.map((b) => ({
@@ -97,19 +108,12 @@ export class BreakController {
         day: b.startTime.toLocaleDateString('en-US', { weekday: 'long' }),
         breakType: b.breakType,
         duration: `${b.duration} min`,
-        startTime: b.startTime.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        endTime: b.endTime
-          ? b.endTime.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : 'N/A',
+        startTime: b.startTime.toISOString(),
+        endTime: b.endTime ? b.endTime.toISOString() : null,
         exceeded: b.exceeded,
       })),
       pagination: result.pagination,
+      availableFilters: result.availableFilters, // إضافة الفلاتر المتاحة
     };
   }
 }
