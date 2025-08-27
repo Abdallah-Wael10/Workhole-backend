@@ -172,69 +172,84 @@ export class AttendanceService {
   }
 
   async getDashboard(userId: string, filter: 'week' | 'month' = 'week') {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    let chartData: { label: string; hours: number }[] = [];
+    let logs: AttendanceLogDocument[] = []; // تعريف logs هنا
+
+    if (filter === 'month') {
+      // احسب بداية الشهر الحالي
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const daysInMonth = monthEnd.getDate();
+
+      // جلب كل الحضور في الشهر الحالي
+      logs = await this.attendanceModel.find({
+        userId,
+        date: { $gte: monthStart.toISOString().split('T')[0], $lte: monthEnd.toISOString().split('T')[0] },
+        clockOut: { $ne: null },
+      });
+
+      // احسب مجموع ساعات كل أسبوع
+      for (let w = 0; w < 4; w++) {
+        const weekStartDay = w * 7 + 1;
+        const weekEndDay = Math.min((w + 1) * 7, daysInMonth);
+        let weekHours = 0;
+        for (let d = weekStartDay; d <= weekEndDay; d++) {
+          const date = new Date(today.getFullYear(), today.getMonth(), d).toISOString().split('T')[0];
+          const dayAttendance = logs.find((a) => a.date === date);
+          weekHours += dayAttendance ? (dayAttendance.workMinutes || 0) / 60 : 0;
+        }
+        chartData.push({
+          label: `Week ${w + 1}`,
+          hours: Math.round(weekHours * 10) / 10,
+        });
+      }
+    } else {
+      // week: آخر 7 أيام
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 6);
+      logs = await this.attendanceModel.find({
+        userId,
+        date: { $gte: startDate.toISOString().split('T')[0], $lte: today.toISOString().split('T')[0] },
+        clockOut: { $ne: null },
+      });
+
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayAttendance = logs.find((a) => a.date === dateStr);
+        chartData.push({
+          label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          hours: dayAttendance ? Math.round((dayAttendance.workMinutes / 60) * 10) / 10 : 0,
+        });
+      }
+    }
+
+    // جلب بيانات اليوم الحالي
+    const todayStr = today.toISOString().split('T')[0];
+    const todayAttendance = await this.attendanceModel.findOne({
+      userId,
+      date: todayStr,
+    });
+
+    // shiftHours و shiftMinutes من بيانات المستخدم
     const user = await this.userModel.findById(userId);
     const shiftHours = user?.shiftHours || 8;
     const shiftMinutes = shiftHours * 60;
 
-    // Today's attendance
-    const todayAttendance = await this.attendanceModel.findOne({
-      userId,
-      date: today,
-    });
-
-    // Filter logic
-    let startDate: Date;
-    let daysCount: number;
-    if (filter === 'month') {
-      startDate = new Date();
-      startDate.setDate(1);
-      daysCount = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
-    } else {
-      startDate = new Date();
-      startDate.setDate(startDate.getDate() - 6);
-      daysCount = 7;
-    }
-    const startStr = startDate.toISOString().split('T')[0];
-
-    // Attendance logs for chart (week or month)
-    const logs = await this.attendanceModel.find({
-      userId,
-      date: { $gte: startStr },
-      clockOut: { $ne: null },
-    });
-
-    // weekAttendance = كل سجلات الحضور في الفترة المطلوبة
-    const weekAttendance = logs;
-
-    // thisWeekMinutes = مجموع دقائق العمل في الفترة المطلوبة
-    const thisWeekMinutes = weekAttendance.reduce(
-      (sum, a) => sum + (a.workMinutes || 0),
-      0
-    );
-
-    // Chart data (لا تعيد تعريف chartData مرتين)
-    const chartData: { date: string; day: string; hours: number }[] = [];
-    for (let i = daysCount - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayAttendance = weekAttendance.find((a) => a.date === dateStr);
-      chartData.push({
-        date: dateStr,
-        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        hours: dayAttendance
-          ? Math.round((dayAttendance.workMinutes / 60) * 10) / 10
-          : 0,
-      });
+    // احسب وقت clock in بصيغة ISO لو المستخدم Clocked In
+    let clockInTime: string | null = null;
+    if (todayAttendance?.clockIn && !todayAttendance?.clockOut) {
+      clockInTime = new Date(`${todayStr}T${todayAttendance.clockIn}:00`).toISOString();
     }
 
     // Today's breaks
     const todayBreaks = await this.userBreakModel.find({
       userId,
       startTime: {
-        $gte: new Date(today + 'T00:00:00'),
-        $lt: new Date(today + 'T23:59:59'),
+        $gte: new Date(todayStr + 'T00:00:00'),
+        $lt: new Date(todayStr + 'T23:59:59'),
       },
       endTime: { $ne: null },
     });
@@ -286,7 +301,7 @@ export class AttendanceService {
     const remainingMinutes = Math.max(0, shiftMinutes - todayWorkMinutes);
 
     // Most productive day (الفترة المطلوبة)
-    const mostProductiveDay = weekAttendance.reduce(
+    const mostProductiveDay = logs.reduce(
       (max: AttendanceLogDocument | null, curr: AttendanceLogDocument) =>
         curr.workMinutes > (max?.workMinutes || 0) ? curr : max,
       null,
@@ -294,7 +309,7 @@ export class AttendanceService {
 
     return {
       dailyShift: `${this.minutesToHoursMinutes(todayWorkMinutes)}`,
-      thisWeek: this.minutesToHoursMinutes(thisWeekMinutes),
+      thisWeek: this.minutesToHoursMinutes(0),
       breaksTaken: this.minutesToHoursMinutes(todayBreakMinutes),
       breaksCount: todayBreaks.length,
       totalOvertime: this.minutesToHoursMinutes(totalOvertimeMinutes),
@@ -311,6 +326,7 @@ export class AttendanceService {
           }
         : null,
       workHoursChart: chartData,
+      clockInTime,
     };
   }
  
