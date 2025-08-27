@@ -241,7 +241,6 @@ export class BreakService {
       },
       { $sort: { count: -1 } },
     ]);
-    console.log('Debug - Aggregation result:', agg);
 
     // Merge all break types with usage
     const breakTypeUsage = allTypes.map((type) => {

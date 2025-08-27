@@ -171,7 +171,7 @@ export class AttendanceService {
     return { attendance, warning };
   }
 
-  async getDashboard(userId: string) {
+  async getDashboard(userId: string, filter: 'week' | 'month' = 'week') {
     const today = new Date().toISOString().split('T')[0];
     const user = await this.userModel.findById(userId);
     const shiftHours = user?.shiftHours || 8;
@@ -183,21 +183,51 @@ export class AttendanceService {
       date: today,
     });
 
-    // This week's work (last 7 days)
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 6);
-    const weekStartStr = weekStart.toISOString().split('T')[0];
+    // Filter logic
+    let startDate: Date;
+    let daysCount: number;
+    if (filter === 'month') {
+      startDate = new Date();
+      startDate.setDate(1);
+      daysCount = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
+    } else {
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - 6);
+      daysCount = 7;
+    }
+    const startStr = startDate.toISOString().split('T')[0];
 
-    const weekAttendance = await this.attendanceModel.find({
+    // Attendance logs for chart (week or month)
+    const logs = await this.attendanceModel.find({
       userId,
-      date: { $gte: weekStartStr },
+      date: { $gte: startStr },
       clockOut: { $ne: null },
     });
 
+    // weekAttendance = كل سجلات الحضور في الفترة المطلوبة
+    const weekAttendance = logs;
+
+    // thisWeekMinutes = مجموع دقائق العمل في الفترة المطلوبة
     const thisWeekMinutes = weekAttendance.reduce(
-      (sum, a) => sum + a.workMinutes,
-      0,
+      (sum, a) => sum + (a.workMinutes || 0),
+      0
     );
+
+    // Chart data (لا تعيد تعريف chartData مرتين)
+    const chartData: { date: string; day: string; hours: number }[] = [];
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayAttendance = weekAttendance.find((a) => a.date === dateStr);
+      chartData.push({
+        date: dateStr,
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        hours: dayAttendance
+          ? Math.round((dayAttendance.workMinutes / 60) * 10) / 10
+          : 0,
+      });
+    }
 
     // Today's breaks
     const todayBreaks = await this.userBreakModel.find({
@@ -255,41 +285,25 @@ export class AttendanceService {
     // Remaining minutes
     const remainingMinutes = Math.max(0, shiftMinutes - todayWorkMinutes);
 
-    // Most productive day (this week)
+    // Most productive day (الفترة المطلوبة)
     const mostProductiveDay = weekAttendance.reduce(
       (max: AttendanceLogDocument | null, curr: AttendanceLogDocument) =>
         curr.workMinutes > (max?.workMinutes || 0) ? curr : max,
       null,
     );
 
-    // Work hours chart (last 7 days)
-    const chartData: { date: string; day: string; hours: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayAttendance = weekAttendance.find((a) => a.date === dateStr);
-      chartData.push({
-        date: dateStr,
-        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        hours: dayAttendance
-          ? Math.round((dayAttendance.workMinutes / 60) * 10) / 10
-          : 0,
-      });
-    }
-
     return {
-      dailyShift: `${this.minutesToHoursMinutes(todayWorkMinutes)}`, // "1h 30m
-      thisWeek: this.minutesToHoursMinutes(thisWeekMinutes), // "15h 30m"
-      breaksTaken: this.minutesToHoursMinutes(todayBreakMinutes), // "22m" (time not count)
-      breaksCount: todayBreaks.length, // Number of breaks taken
-      totalOvertime: this.minutesToHoursMinutes(totalOvertimeMinutes), // "2h 30m"
+      dailyShift: `${this.minutesToHoursMinutes(todayWorkMinutes)}`,
+      thisWeek: this.minutesToHoursMinutes(thisWeekMinutes),
+      breaksTaken: this.minutesToHoursMinutes(todayBreakMinutes),
+      breaksCount: todayBreaks.length,
+      totalOvertime: this.minutesToHoursMinutes(totalOvertimeMinutes),
       currentStatus: isClockedIn ? 'Clocked In' : 'Clocked Out',
-      activeWorkTime: this.minutesToHoursMinutes(activeWorkMinutes), // "1h 8m" (work - breaks)
-      todayProgress: `${this.minutesToHoursMinutes(todayWorkMinutes)} / ${shiftHours}h`, // "1h 30m / 8h"
-      efficiency: Math.round(efficiency), // 85% (active work / shift)
-      completedShift: Math.round(completedShift), // 25% (completed percentage)
-      remainingTime: this.minutesToHoursMinutes(remainingMinutes), // "6h 30m"
+      activeWorkTime: this.minutesToHoursMinutes(activeWorkMinutes),
+      todayProgress: `${this.minutesToHoursMinutes(todayWorkMinutes)} / ${shiftHours}h`,
+      efficiency: Math.round(efficiency),
+      completedShift: Math.round(completedShift),
+      remainingTime: this.minutesToHoursMinutes(remainingMinutes),
       mostProductiveDay: mostProductiveDay
         ? {
             day: mostProductiveDay.dayName,

@@ -30,8 +30,8 @@ export class AttendanceController {
   }
 
   @Get('me')
-  async getDashboard(@Request() req) {
-    return this.attendanceService.getDashboard(req.user.id);
+  async getDashboard(@Request() req, @Query('filter') filter: 'week' | 'month' = 'week') {
+    return this.attendanceService.getDashboard(req.user.id, filter);
   }
 
   @Get('stats')
