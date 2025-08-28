@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CompleteTimerDto {
   @IsString()
@@ -7,12 +7,10 @@ export class CompleteTimerDto {
 }
 
 export class UpdateTimerDto {
-  @IsEnum(['cancelled'])
-  @IsOptional()
-  status?: 'cancelled';
+  @IsEnum(['completed', 'cancelled', 'paused', 'running'])
+  status?: 'completed' | 'cancelled' | 'paused' | 'running';
 
   @IsString()
   @IsOptional()
   note?: string;
 }
- 

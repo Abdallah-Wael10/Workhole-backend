@@ -77,6 +77,7 @@ export class DashboardService {
       currentStatus,
       leaveStatus,
       dailyShift,
+      clockIn: todayAttendance?.clockIn || null, // أضف هذا السطر
       heatChart, // [{ month: 1, days: [...] }, ...]
     };
   }

@@ -307,9 +307,12 @@ export class AttendanceService {
       null,
     );
 
+    // احسب مجموع دقائق العمل في الأسبوع الحالي
+    const weekTotalMinutes = logs.reduce((sum, a) => sum + (a.workMinutes || 0), 0);
+
     return {
       dailyShift: `${this.minutesToHoursMinutes(todayWorkMinutes)}`,
-      thisWeek: this.minutesToHoursMinutes(0),
+      thisWeek: this.minutesToHoursMinutes(weekTotalMinutes), // هنا التصحيح
       breaksTaken: this.minutesToHoursMinutes(todayBreakMinutes),
       breaksCount: todayBreaks.length,
       totalOvertime: this.minutesToHoursMinutes(totalOvertimeMinutes),
