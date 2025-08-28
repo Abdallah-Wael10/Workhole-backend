@@ -13,7 +13,7 @@ import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @UseGuards(JwtAuthGuard)
-@Controller('users')
+@Controller('/api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -25,6 +25,11 @@ export class UsersController {
   @Get(':id')
   async findOne(@Param('id') id: string, @Request() req) {
     return this.usersService.findOne(id, req.user.role);
+  }
+
+  @Get()
+  async findAll(@Request() req) {
+    return this.usersService.findAll(req.user.role);
   }
 
   @Put(':id')

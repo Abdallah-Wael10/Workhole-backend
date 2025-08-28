@@ -116,4 +116,9 @@ export class BreakController {
       availableFilters: result.availableFilters, // إضافة الفلاتر المتاحة
     };
   }
+
+  @Get('active-count')
+  async getActiveBreaksCount(@Request() req) {
+    return this.breakService.getActiveBreaksCount();
+  }
 }

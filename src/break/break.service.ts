@@ -369,4 +369,15 @@ export class BreakService {
     if (mins === 0) return `${hours} hr`; // "3 hr", "8 hr"
     return `${hours} hr ${mins} min`; // "1 hr 30 min", "2 hr 15 min"
   }
+
+  // New method: Get active breaks count
+  async getActiveBreaksCount() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activeBreaks = await this.userBreakModel.find({
+      startTime: { $gte: today },
+      endTime: null,
+    });
+    return activeBreaks.length;
+  }
 }

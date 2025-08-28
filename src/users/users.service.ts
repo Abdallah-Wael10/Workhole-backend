@@ -31,19 +31,15 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = await this.userModel.create({
       ...createUserDto,
-      password: hashedPassword,
+      passwordHash: hashedPassword, // صح
     });
 
     return user;
   }
 
-  async findAll(currentUserRole: string): Promise<User[]> {
-    // Only admin can view all users
-    if (!['admin'].includes(currentUserRole)) {
-      throw new ForbiddenException('Only Admin can view all users');
-    }
-
-    return this.userModel.find().select('-password').exec();
+  async findAll(role: string) {
+    // لو فيه صلاحيات admin فقط، أضف شرط هنا
+    return this.userModel.find({});
   }
 
   async findOne(id: string, currentUserRole: string): Promise<User> {
