@@ -9,14 +9,14 @@ export class Timer {
   @Prop({ required: true })
   tag: string; // Task name/description
 
-  @Prop({ required: true })
-  duration: number; // Planned duration in minutes
+  @Prop({ required: true, default: 0 })
+  duration: number; // Planned duration in minutes (0 = unlimited stopwatch)
 
   @Prop({ required: true })
   startTime: Date; // When timer actually started
 
   @Prop()
-  endTime?: Date; // When timer ended (null if still running)
+  endTime?: Date; // When timer ended
 
   @Prop({
     enum: ['running', 'paused', 'completed', 'cancelled'],
@@ -26,16 +26,19 @@ export class Timer {
   status: 'running' | 'paused' | 'completed' | 'cancelled';
 
   @Prop({ default: 0 })
-  actualDuration?: number; // Minutes spent
+  actualDuration?: number; // Actual minutes spent
 
   @Prop({ default: 0 })
+  actualDurationSeconds?: number; // Actual seconds spent (for precision)
+
+  @Prop()
   pausedAt?: Date; // When paused
 
   @Prop({ default: 0 })
-  totalPaused?: number; // Total paused minutes
+  totalPaused?: number; // Total paused time in seconds
 
   @Prop()
-  note?: string; // Optional note when completing
+  note?: string; // Optional note when completing/cancelling
 }
 
 export type TimerDocument = Timer & Document;

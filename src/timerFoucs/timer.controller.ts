@@ -61,4 +61,10 @@ export class TimerController {
   ) {
     return this.timerService.cancelTimer(req.user.id, id, dto);
   }
+
+  // Get timer logs
+  @Get('logs')
+  async getTimerLogs(@Request() req) {
+    return this.timerService.getTimerLogs(req.user.id);
+  }
 }

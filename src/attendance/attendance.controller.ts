@@ -43,8 +43,8 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Get('all')
-  async getAllUsersAttendance() {
-    return this.attendanceService.getAllUsersAttendance();
+  async getAllUsersAttendance(@Query('range') range: string = 'today') {
+    return this.attendanceService.getAllUsersAttendance(range);
   }
 
   // Admin: Set office location

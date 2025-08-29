@@ -2,7 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
-  BadRequestException, // بدل TooManyRequestsException
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -19,13 +19,13 @@ export class TimerService {
   ) {}
 
   async startTimer(userId: string, dto: CreateTimerDto) {
-    // Prevent too many requests (one running timer per user)
-    const runningTimer = await this.timerModel.findOne({
+    // Check for existing running/paused timer
+    const existingTimer = await this.timerModel.findOne({
       userId,
-      status: 'running',
+      status: { $in: ['running', 'paused'] },
     });
-    if (runningTimer)
-      throw new BadRequestException('You already have a running timer.');
+    if (existingTimer)
+      throw new BadRequestException('You already have an active timer. Please complete or cancel it first.');
 
     const user = await this.userModel.findById(userId);
     if (!user) throw new NotFoundException('User not found');
@@ -39,7 +39,16 @@ export class TimerService {
       totalPaused: 0,
     });
 
-    return { success: true, timer };
+    return { 
+      success: true, 
+      timer: {
+        id: timer._id,
+        tag: timer.tag,
+        duration: timer.duration,
+        startTime: timer.startTime,
+        status: timer.status,
+      }
+    };
   }
 
   async getCurrentTimer(userId: string) {
@@ -47,26 +56,27 @@ export class TimerService {
       userId,
       status: { $in: ['running', 'paused'] },
     });
+    
     if (!timer) return { isRunning: false, timer: null };
 
-    let elapsedMinutes = 0;
+    // Calculate elapsed time in seconds for real-time display
+    let elapsedSeconds = 0;
     if (timer.status === 'running') {
-      elapsedMinutes = Math.round(
-        (Date.now() - timer.startTime.getTime() - (timer.totalPaused || 0) * 60000) /
-          60000,
+      elapsedSeconds = Math.floor(
+        (Date.now() - timer.startTime.getTime() - (timer.totalPaused || 0) * 1000) / 1000
       );
     } else if (timer.status === 'paused' && timer.pausedAt) {
-      elapsedMinutes = Math.round(
-        (timer.pausedAt.getTime() - timer.startTime.getTime() - (timer.totalPaused || 0) * 60000) /
-          60000,
+      elapsedSeconds = Math.floor(
+        (timer.pausedAt.getTime() - timer.startTime.getTime() - (timer.totalPaused || 0) * 1000) / 1000
       );
     }
 
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
     const remainingMinutes = Math.max(0, timer.duration - elapsedMinutes);
 
-    // Auto-complete if finished
-    if (remainingMinutes <= 0 && timer.status === 'running') {
-      await this.completeTimer(userId, String(timer._id), { note: 'Auto-completed' });
+    // Auto-complete if duration exceeded (optional - for countdown mode)
+    if (timer.duration > 0 && elapsedMinutes >= timer.duration && timer.status === 'running') {
+      await this.completeTimer(userId, String(timer._id), { note: 'Auto-completed - duration reached' });
       return { isRunning: false, timer: null, completed: true };
     }
 
@@ -76,11 +86,14 @@ export class TimerService {
         id: timer._id,
         tag: timer.tag,
         duration: timer.duration,
+        elapsedSeconds,
         elapsedMinutes,
         remainingMinutes,
         startTime: timer.startTime,
         status: timer.status,
-        progress: Math.round((elapsedMinutes / timer.duration) * 100),
+        progress: timer.duration > 0 ? Math.min(100, Math.round((elapsedMinutes / timer.duration) * 100)) : 0,
+        totalPaused: timer.totalPaused || 0,
+        pausedAt: timer.pausedAt,
       },
     };
   }
@@ -91,12 +104,15 @@ export class TimerService {
       userId,
       status: 'running',
     });
+    
     if (!timer) throw new NotFoundException('No running timer found');
+    
     await this.timerModel.findByIdAndUpdate(timerId, {
       status: 'paused',
       pausedAt: new Date(),
     });
-    return { success: true };
+    
+    return { success: true, message: 'Timer paused successfully' };
   }
 
   async resumeTimer(userId: string, timerId: string) {
@@ -105,43 +121,101 @@ export class TimerService {
       userId,
       status: 'paused',
     });
+    
     if (!timer) throw new NotFoundException('No paused timer found');
     if (!timer.pausedAt) throw new BadRequestException('Timer is not paused');
-    const pausedDuration = Math.round((Date.now() - timer.pausedAt.getTime()) / 60000);
+    
+    // Calculate how long the timer was paused (in seconds)
+    const pausedDurationSeconds = Math.floor((Date.now() - timer.pausedAt.getTime()) / 1000);
+    
     await this.timerModel.findByIdAndUpdate(timerId, {
       status: 'running',
-      totalPaused: (timer.totalPaused || 0) + pausedDuration,
+      totalPaused: (timer.totalPaused || 0) + pausedDurationSeconds,
       pausedAt: null,
     });
-    return { success: true };
+    
+    return { success: true, message: 'Timer resumed successfully' };
   }
 
   async completeTimer(userId: string, timerId: string, dto: UpdateTimerDto) {
-    const timer = await this.timerModel.findOne({ _id: timerId, userId });
-    if (!timer) throw new NotFoundException('Timer not found');
+    const timer = await this.timerModel.findOne({ 
+      _id: timerId, 
+      userId,
+      status: { $in: ['running', 'paused'] }
+    });
+    
+    if (!timer) throw new NotFoundException('No active timer found');
+    
     const now = new Date();
-    let actualDuration = Math.round(
-      (now.getTime() - timer.startTime.getTime() - (timer.totalPaused || 0) * 60000) /
-        60000,
-    );
-    actualDuration = Math.min(actualDuration, timer.duration);
+    let actualDurationSeconds;
+    
+    if (timer.status === 'running') {
+      actualDurationSeconds = Math.floor(
+        (now.getTime() - timer.startTime.getTime() - (timer.totalPaused || 0) * 1000) / 1000
+      );
+    } else { // paused
+      actualDurationSeconds = timer.pausedAt
+        ? Math.floor(
+            (timer.pausedAt.getTime() - timer.startTime.getTime() - (timer.totalPaused || 0) * 1000) / 1000
+          )
+        : 0;
+    }
+    
     await this.timerModel.findByIdAndUpdate(timerId, {
       endTime: now,
-      actualDuration,
+      actualDuration: Math.floor(actualDurationSeconds / 60), // Store in minutes
+      actualDurationSeconds,
       status: 'completed',
       note: dto.note || '',
     });
-    return { success: true };
+    
+    return { 
+      success: true, 
+      message: 'Timer completed successfully',
+      actualDuration: actualDurationSeconds,
+    };
   }
 
   async cancelTimer(userId: string, timerId: string, dto: UpdateTimerDto) {
-    const timer = await this.timerModel.findOne({ _id: timerId, userId });
-    if (!timer) throw new NotFoundException('Timer not found');
+    const timer = await this.timerModel.findOne({ 
+      _id: timerId, 
+      userId,
+      status: { $in: ['running', 'paused'] }
+    });
+    
+    if (!timer) throw new NotFoundException('No active timer found');
+    
+    const now = new Date();
+    let actualDurationSeconds = 0;
+    
+    if (timer.status === 'running') {
+      actualDurationSeconds = Math.floor(
+        (now.getTime() - timer.startTime.getTime() - (timer.totalPaused || 0) * 1000) / 1000
+      );
+    } else { // paused
+      actualDurationSeconds = timer.pausedAt
+        ? Math.floor(
+            (timer.pausedAt.getTime() - timer.startTime.getTime() - (timer.totalPaused || 0) * 1000) / 1000
+          )
+        : 0;
+    }
+    
     await this.timerModel.findByIdAndUpdate(timerId, {
-      endTime: new Date(),
+      endTime: now,
+      actualDuration: Math.floor(actualDurationSeconds / 60), // Store in minutes
+      actualDurationSeconds,
       status: 'cancelled',
       note: dto.note || '',
     });
-    return { success: true };
+    
+    return { 
+      success: true, 
+      message: 'Timer cancelled successfully',
+      actualDuration: actualDurationSeconds,
+    };
+  }
+
+  async getTimerLogs(userId: string) {
+    return await this.timerModel.find({ userId }).sort({ startTime: -1 });
   }
 }

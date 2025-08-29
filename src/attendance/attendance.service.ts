@@ -400,10 +400,29 @@ export class AttendanceService {
     };
   }
 
-  async getAllUsersAttendance() {
-    const today = new Date().toISOString().split('T')[0];
+  async getAllUsersAttendance(range: string = 'today') {
+    let startDate, endDate;
+    const today = new Date();
+    if (range === 'today') {
+      startDate = today.toISOString().split('T')[0];
+      endDate = startDate;
+    } else if (range === 'lastWeek') {
+      const lastWeek = new Date(today);
+      lastWeek.setDate(today.getDate() - 7);
+      startDate = lastWeek.toISOString().split('T')[0];
+      endDate = today.toISOString().split('T')[0];
+    } else if (range === 'lastMonth') {
+      const lastMonth = new Date(today);
+      lastMonth.setMonth(today.getMonth() - 1);
+      startDate = lastMonth.toISOString().split('T')[0];
+      endDate = today.toISOString().split('T')[0];
+    } else {
+      startDate = today.toISOString().split('T')[0];
+      endDate = startDate;
+    }
+
     const allAttendance = await this.attendanceModel
-      .find({ date: today })
+      .find({ date: { $gte: startDate, $lte: endDate } })
       .populate('userId', 'firstName lastName email');
 
     return allAttendance.map((a) => ({
