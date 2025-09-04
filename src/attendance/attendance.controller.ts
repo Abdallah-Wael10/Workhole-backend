@@ -21,27 +21,17 @@ export class AttendanceController {
 
   @Post('clock-in')
   async clockIn(@Body() dto: ClockInDto, @Request() req) {
-    return this.attendanceService.clockIn(
-      req.user.id, 
-      dto.latitude, 
-      dto.longitude, 
-      dto.timezone
-    );
+    return this.attendanceService.clockIn(req.user.id, dto.latitude, dto.longitude);
   }
 
   @Post('clock-out')
   async clockOut(@Body() dto: ClockOutDto, @Request() req) {
-    return this.attendanceService.clockOut(
-      req.user.id, 
-      dto.latitude, 
-      dto.longitude, 
-      dto.timezone
-    );
+    return this.attendanceService.clockOut(req.user.id, dto.latitude, dto.longitude);
   }
 
   @Get('me')
-  async getDashboard(@Request() req, @Query('filter') filter: 'week' | 'month' = 'week', @Query('timezone') timezone: string = 'UTC') {
-    return this.attendanceService.getDashboard(req.user.id, filter, timezone);
+  async getDashboard(@Request() req, @Query('filter') filter: 'week' | 'month' = 'week') {
+    return this.attendanceService.getDashboard(req.user.id, filter);
   }
 
   @Get('stats')

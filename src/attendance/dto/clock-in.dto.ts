@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional } from 'class-validator';
 
 export class ClockInDto {
   @IsEnum(['office', 'home'])
@@ -10,8 +10,4 @@ export class ClockInDto {
 
   @IsNumber()
   longitude: number;
-
-  @IsString()
-  @IsOptional()
-  timezone?: string; // User's timezone (e.g., "America/New_York", "Europe/London")
 }

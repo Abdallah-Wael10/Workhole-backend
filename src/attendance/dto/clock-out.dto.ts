@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber } from 'class-validator';
 
 export class ClockOutDto {
   @IsNumber()
@@ -6,8 +6,4 @@ export class ClockOutDto {
 
   @IsNumber()
   longitude: number;
-
-  @IsString()
-  @IsOptional()
-  timezone?: string; // User's timezone (e.g., "America/New_York", "Europe/London")
 }
