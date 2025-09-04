@@ -41,10 +41,10 @@ export class AttendanceService {
     return R * c;
   }
 
-  async clockIn(userId: string, latitude: number, longitude: number, localTime?: string) {
+  async clockIn(userId: string, latitude: number, longitude: number) {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    const clockInTime = localTime || now.toTimeString().slice(0, 5); // <-- use localTime if present
+    const clockInTime = now.toTimeString().slice(0, 5);
     const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
 
     // Check if already clocked in today
@@ -106,10 +106,10 @@ export class AttendanceService {
     return { attendance, warning };
   }
 
-  async clockOut(userId: string, latitude: number, longitude: number, localTime?: string) {
+  async clockOut(userId: string, latitude: number, longitude: number) {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    const clockOutTime = localTime || now.toTimeString().slice(0, 5); // <-- use localTime if present
+    const clockOutTime = now.toTimeString().slice(0, 5);
 
     const attendance = await this.attendanceModel.findOne({
       userId,
@@ -141,18 +141,16 @@ export class AttendanceService {
     // Calculate work minutes
     const clockInMinutes = this.timeToMinutes(attendance.clockIn);
     const clockOutMinutes = this.timeToMinutes(clockOutTime);
-    let workMinutes = clockOutMinutes - clockInMinutes;
-
-    // Prevent negative work minutes
-    if (workMinutes < 0) workMinutes = 0;
+    const workMinutes = clockOutMinutes - clockInMinutes;
 
     // Get user shift hours
     const user = await this.userModel.findById(userId);
     const shiftHours = user?.shiftHours || 8;
     const expectedMinutes = shiftHours * 60;
+    const isOvertime = workMinutes > expectedMinutes;
+
     attendance.clockOut = clockOutTime;
     attendance.workMinutes = workMinutes;
-    const isOvertime = workMinutes > expectedMinutes; // <-- add this line
     attendance.isOvertime = isOvertime;
     attendance.location = location;
     await attendance.save();
@@ -165,7 +163,7 @@ export class AttendanceService {
       date: today,
       workMinutes,
       location,
-      isOvertime, // <-- now it's defined
+      isOvertime,
       warning,
     });
 
@@ -277,20 +275,11 @@ export class AttendanceService {
       0,
     );
 
-    // Current status
+    // Current status. 
     const isClockedIn = todayAttendance?.clockIn && !todayAttendance?.clockOut;
 
     // Today's work minutes
-    let todayWorkMinutes = todayAttendance?.workMinutes || 0;
-
-    // لو المستخدم Clocked In ولسه معملش Clock Out، احسب الوقت من clockIn لحد دلوقتي
-    if (todayAttendance?.clockIn && !todayAttendance?.clockOut) {
-      const now = new Date();
-      const clockInDate = new Date(`${todayStr}T${todayAttendance.clockIn}:00`);
-      let diffMinutes = Math.floor((now.getTime() - clockInDate.getTime()) / 60000);
-      if (diffMinutes < 0) diffMinutes = 0; // لو بالسالب خليه صفر
-      todayWorkMinutes = diffMinutes;
-    }
+    const todayWorkMinutes = todayAttendance?.workMinutes || 0;
 
     // Active work time (today's work - breaks)
     const activeWorkMinutes = Math.max(0, todayWorkMinutes - todayBreakMinutes);

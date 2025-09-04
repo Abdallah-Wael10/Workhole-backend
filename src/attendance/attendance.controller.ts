@@ -21,22 +21,12 @@ export class AttendanceController {
 
   @Post('clock-in')
   async clockIn(@Body() dto: ClockInDto, @Request() req) {
-    return this.attendanceService.clockIn(
-      req.user.id,
-      dto.latitude,
-      dto.longitude,
-      dto.localTime, // <-- pass localTime
-    );
+    return this.attendanceService.clockIn(req.user.id, dto.latitude, dto.longitude);
   }
 
   @Post('clock-out')
   async clockOut(@Body() dto: ClockOutDto, @Request() req) {
-    return this.attendanceService.clockOut(
-      req.user.id,
-      dto.latitude,
-      dto.longitude,
-      dto.localTime, // <-- pass localTime
-    );
+    return this.attendanceService.clockOut(req.user.id, dto.latitude, dto.longitude);
   }
 
   @Get('me')
