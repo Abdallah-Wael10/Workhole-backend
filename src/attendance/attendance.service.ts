@@ -281,7 +281,16 @@ export class AttendanceService {
     const isClockedIn = todayAttendance?.clockIn && !todayAttendance?.clockOut;
 
     // Today's work minutes
-    const todayWorkMinutes = todayAttendance?.workMinutes || 0;
+    let todayWorkMinutes = todayAttendance?.workMinutes || 0;
+
+    // لو المستخدم Clocked In ولسه معملش Clock Out، احسب الوقت من clockIn لحد دلوقتي
+    if (todayAttendance?.clockIn && !todayAttendance?.clockOut) {
+      const now = new Date();
+      const clockInDate = new Date(`${todayStr}T${todayAttendance.clockIn}:00`);
+      let diffMinutes = Math.floor((now.getTime() - clockInDate.getTime()) / 60000);
+      if (diffMinutes < 0) diffMinutes = 0; // لو بالسالب خليه صفر
+      todayWorkMinutes = diffMinutes;
+    }
 
     // Active work time (today's work - breaks)
     const activeWorkMinutes = Math.max(0, todayWorkMinutes - todayBreakMinutes);
