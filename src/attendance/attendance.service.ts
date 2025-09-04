@@ -141,16 +141,18 @@ export class AttendanceService {
     // Calculate work minutes
     const clockInMinutes = this.timeToMinutes(attendance.clockIn);
     const clockOutMinutes = this.timeToMinutes(clockOutTime);
-    const workMinutes = clockOutMinutes - clockInMinutes;
+    let workMinutes = clockOutMinutes - clockInMinutes;
+
+    // Prevent negative work minutes
+    if (workMinutes < 0) workMinutes = 0;
 
     // Get user shift hours
     const user = await this.userModel.findById(userId);
     const shiftHours = user?.shiftHours || 8;
     const expectedMinutes = shiftHours * 60;
-    const isOvertime = workMinutes > expectedMinutes;
-
     attendance.clockOut = clockOutTime;
     attendance.workMinutes = workMinutes;
+    const isOvertime = workMinutes > expectedMinutes; // <-- add this line
     attendance.isOvertime = isOvertime;
     attendance.location = location;
     await attendance.save();
@@ -163,7 +165,7 @@ export class AttendanceService {
       date: today,
       workMinutes,
       location,
-      isOvertime,
+      isOvertime, // <-- now it's defined
       warning,
     });
 
