@@ -6,7 +6,7 @@ import { User, UserDocument } from '../users/users.schema';
 import { UserBreak, UserBreakDocument } from '../break/break.schema';
 import { OfficeLocation, OfficeLocationDocument } from './office-location.schema';
 import { MailService } from '../mail/mail.service';
-import { NotificationsService } from '../notifications/notifications.service'; // Add import
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AttendanceService {
@@ -19,7 +19,7 @@ export class AttendanceService {
     @InjectModel(OfficeLocation.name)
     private officeLocationModel: Model<OfficeLocationDocument>,
     private mailService: MailService,
-    private notificationsService: NotificationsService, // Inject NotificationsService
+    private notificationsService: NotificationsService,
   ) {}
 
   async setOfficeLocation(latitude: number, longitude: number, name: string, address?: string, radius: number = 100) {
@@ -41,11 +41,33 @@ export class AttendanceService {
     return R * c;
   }
 
-  async clockIn(userId: string, latitude: number, longitude: number) {
-    const today = new Date().toISOString().split('T')[0];
+  // Helper function to get user's local time
+  private getUserLocalTime(timezone: string = 'UTC'): { date: string; time: string; dayName: string; fullDate: Date } {
     const now = new Date();
-    const clockInTime = now.toTimeString().slice(0, 5);
-    const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    // Create a date in the user's timezone
+    const userTime = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
+    
+    // Get date in YYYY-MM-DD format
+    const date = userTime.toISOString().split('T')[0];
+    
+    // Get time in HH:mm format
+    const time = userTime.toTimeString().slice(0, 5);
+    
+    // Get day name
+    const dayName = userTime.toLocaleDateString('en-US', { weekday: 'long' });
+    
+    return {
+      date,
+      time,
+      dayName,
+      fullDate: userTime
+    };
+  }
+
+  async clockIn(userId: string, latitude: number, longitude: number, timezone: string = 'UTC') {
+    // Get user's local time
+    const { date: today, time: clockInTime, dayName, fullDate: now } = this.getUserLocalTime(timezone);
 
     // Check if already clocked in today
     const existing = await this.attendanceModel.findOne({
@@ -106,10 +128,9 @@ export class AttendanceService {
     return { attendance, warning };
   }
 
-  async clockOut(userId: string, latitude: number, longitude: number) {
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    const clockOutTime = now.toTimeString().slice(0, 5);
+  async clockOut(userId: string, latitude: number, longitude: number, timezone: string = 'UTC') {
+    // Get user's local time
+    const { date: today, time: clockOutTime, fullDate: now } = this.getUserLocalTime(timezone);
 
     const attendance = await this.attendanceModel.findOne({
       userId,
@@ -173,25 +194,27 @@ export class AttendanceService {
     return { attendance, warning };
   }
 
-  async getDashboard(userId: string, filter: 'week' | 'month' = 'week') {
-    const today = new Date();
+  async getDashboard(userId: string, filter: 'week' | 'month' = 'week', timezone: string = 'UTC') {
+    // Get user's local time
+    const { date: todayStr, fullDate: today } = this.getUserLocalTime(timezone);
+    
     let chartData: { label: string; hours: number }[] = [];
-    let logs: AttendanceLogDocument[] = []; // تعريف logs هنا
+    let logs: AttendanceLogDocument[] = [];
 
     if (filter === 'month') {
-      // احسب بداية الشهر الحالي
+      // Calculate month start and end in user's timezone
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       const daysInMonth = monthEnd.getDate();
 
-      // جلب كل الحضور في الشهر الحالي
+      // Get all attendance in the current month
       logs = await this.attendanceModel.find({
         userId,
         date: { $gte: monthStart.toISOString().split('T')[0], $lte: monthEnd.toISOString().split('T')[0] },
         clockOut: { $ne: null },
       });
 
-      // احسب مجموع ساعات كل أسبوع
+      // Calculate total hours for each week
       for (let w = 0; w < 4; w++) {
         const weekStartDay = w * 7 + 1;
         const weekEndDay = Math.min((w + 1) * 7, daysInMonth);
@@ -207,12 +230,12 @@ export class AttendanceService {
         });
       }
     } else {
-      // week: آخر 7 أيام
+      // week: last 7 days in user's timezone
       const startDate = new Date(today);
       startDate.setDate(today.getDate() - 6);
       logs = await this.attendanceModel.find({
         userId,
-        date: { $gte: startDate.toISOString().split('T')[0], $lte: today.toISOString().split('T')[0] },
+        date: { $gte: startDate.toISOString().split('T')[0], $lte: todayStr },
         clockOut: { $ne: null },
       });
 
@@ -228,22 +251,23 @@ export class AttendanceService {
       }
     }
 
-    // جلب بيانات اليوم الحالي
-    const todayStr = today.toISOString().split('T')[0];
+    // Get today's data
     const todayAttendance = await this.attendanceModel.findOne({
       userId,
       date: todayStr,
     });
 
-    // shiftHours و shiftMinutes من بيانات المستخدم
+    // shiftHours and shiftMinutes from user data
     const user = await this.userModel.findById(userId);
     const shiftHours = user?.shiftHours || 8;
     const shiftMinutes = shiftHours * 60;
 
-    // احسب وقت clock in بصيغة ISO لو المستخدم Clocked In
+    // Calculate clock in time in ISO format if user is Clocked In
     let clockInTime: string | null = null;
     if (todayAttendance?.clockIn && !todayAttendance?.clockOut) {
-      clockInTime = new Date(`${todayStr}T${todayAttendance.clockIn}:00`).toISOString();
+      // Convert user's local time to ISO string
+      const clockInDate = new Date(`${todayStr}T${todayAttendance.clockIn}:00`);
+      clockInTime = clockInDate.toISOString();
     }
 
     // Today's breaks
@@ -309,12 +333,12 @@ export class AttendanceService {
       null,
     );
 
-    // احسب مجموع دقائق العمل في الأسبوع الحالي
+    // Calculate total work minutes in current week
     const weekTotalMinutes = logs.reduce((sum, a) => sum + (a.workMinutes || 0), 0);
 
     return {
       dailyShift: `${this.minutesToHoursMinutes(todayWorkMinutes)}`,
-      thisWeek: this.minutesToHoursMinutes(weekTotalMinutes), // هنا التصحيح
+      thisWeek: this.minutesToHoursMinutes(weekTotalMinutes),
       breaksTaken: this.minutesToHoursMinutes(todayBreakMinutes),
       breaksCount: todayBreaks.length,
       totalOvertime: this.minutesToHoursMinutes(totalOvertimeMinutes),
