@@ -6,6 +6,7 @@ import {
   AttendanceLogDocument,
 } from '../attendance/attendance.schema';
 import { Leave, LeaveDocument } from '../leaves/leaves.schema';
+import { WeekDay, Week, WeeklyHeatChart, DashboardResponse } from './dashboard.types';
 
 @Injectable()
 export class DashboardService {
@@ -15,7 +16,7 @@ export class DashboardService {
     @InjectModel(Leave.name) private leaveModel: Model<LeaveDocument>,
   ) {}
 
-  async getDashboard(userId: string) {
+  async getDashboard(userId: string, month?: number): Promise<DashboardResponse> {
     const today = new Date().toISOString().split('T')[0];
 
     // Current status
@@ -38,47 +39,108 @@ export class DashboardService {
       ? latestLeave[0].status
       : 'No requests';
 
-    // Daily shift
-    const dailyShift = todayAttendance?.workMinutes
-      ? this.minutesToHoursMinutes(todayAttendance.workMinutes)
+    // Daily shift (active work hours)
+    const activeWorkMinutes = (todayAttendance?.workMinutes || 0) - (todayAttendance?.breakMinutes || 0);
+    const dailyShift = activeWorkMinutes > 0
+      ? this.minutesToHoursMinutes(activeWorkMinutes)
       : '0h 0m';
 
-    // Work hours heat chart (12 months, every day)
+    // Week-based heat chart for specified month or current month
     const year = new Date().getFullYear();
-    const start = new Date(`${year}-01-01`);
-    const end = new Date(`${year}-12-31`);
-    const allAttendance = await this.attendanceModel.find({
+    const targetMonth = month || new Date().getMonth() + 1;
+    
+    // Get attendance data for the month with some buffer days
+    const firstDay = new Date(year, targetMonth - 1, 1);
+    const lastDay = new Date(year, targetMonth, 0);
+    
+    // Get a wider range to include days from adjacent months that might show in the week grid
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - 7); // Go back a week
+    const endDate = new Date(lastDay);
+    endDate.setDate(endDate.getDate() + 7); // Go forward a week
+    
+    const monthAttendance = await this.attendanceModel.find({
       userId,
       date: {
-        $gte: start.toISOString().split('T')[0],
-        $lte: end.toISOString().split('T')[0],
+        $gte: startDate.toISOString().split('T')[0],
+        $lte: endDate.toISOString().split('T')[0],
       },
     });
 
-    // Build heat chart data
-    const chart: { [month: string]: number[] } = {};
-    for (let m = 0; m < 12; m++) {
-      const daysInMonth = new Date(year, m + 1, 0).getDate();
-      chart[m + 1] = Array(daysInMonth).fill(0);
-    }
-    allAttendance.forEach((a) => {
-      const [y, m, d] = a.date.split('-').map(Number);
-      if (y === year)
-        chart[m][d - 1] = Math.round(((a.workMinutes || 0) / 60) * 10) / 10;
-    });
-
-    // Flatten chart for frontend (array of months, each month is array of days)
-    const heatChart = Object.entries(chart).map(([month, days]) => ({
-      month: Number(month),
-      days,
-    }));
+    // Build weekly heat chart data
+    const weeklyChart = this.buildWeeklyHeatChart(year, targetMonth, monthAttendance);
 
     return {
       currentStatus,
       leaveStatus,
       dailyShift,
-      clockIn: todayAttendance?.clockIn || null, // أضف هذا السطر
-      heatChart, // [{ month: 1, days: [...] }, ...]
+      clockIn: todayAttendance?.clockIn || null,
+      heatChart: weeklyChart,
+      currentMonth: targetMonth,
+      currentYear: year,
+    };
+  }
+
+  private buildWeeklyHeatChart(year: number, month: number, attendanceData: any[]): WeeklyHeatChart {
+    // Create a map of attendance by date with ACTIVE work hours (work - break time)
+    const attendanceMap = new Map<string, number>();
+    attendanceData.forEach((a) => {
+      const activeMinutes = (a.workMinutes || 0) - (a.breakMinutes || 0);
+      const activeHours = activeMinutes > 0 ? Math.round((activeMinutes / 60) * 10) / 10 : 0;
+      attendanceMap.set(a.date, activeHours);
+    });
+
+    // Get first day of month
+    const firstDayOfMonth = new Date(year, month - 1, 1);
+    const lastDayOfMonth = new Date(year, month, 0);
+    
+    // Find the first Sunday on or before the first day of the month
+    let weekStart = new Date(firstDayOfMonth);
+    while (weekStart.getDay() !== 0) { // 0 is Sunday
+      weekStart.setDate(weekStart.getDate() - 1);
+    }
+
+    const weeks: Week[] = [];
+    let currentWeekStart = new Date(weekStart);
+
+    // Generate EXACTLY 4 weeks for consistent layout
+    for (let weekNumber = 1; weekNumber <= 4; weekNumber++) {
+      const weekDays: WeekDay[] = [];
+
+      // Generate exactly 7 days for each week (Sun-Sat)
+      for (let dayNum = 0; dayNum < 7; dayNum++) {
+        const currentDay = new Date(currentWeekStart);
+        currentDay.setDate(currentWeekStart.getDate() + dayNum);
+        
+        // Check if this day belongs to our target month
+        const isCurrentMonth = currentDay.getMonth() === month - 1;
+
+        const dateStr = currentDay.toISOString().split('T')[0];
+        const activeWorkHours = attendanceMap.get(dateStr) || 0;
+        
+        weekDays.push({
+          date: dateStr,
+          workHours: activeWorkHours, // This is now ACTIVE work hours
+          isCurrentMonth: isCurrentMonth,
+          dayOfMonth: currentDay.getDate(),
+          dayOfWeek: dayNum, // 0=Sun, 1=Mon, ..., 6=Sat
+        });
+      }
+
+      // Always add the week (exactly 4 weeks)
+      weeks.push({
+        weekNumber: weekNumber,
+        days: weekDays,
+      });
+
+      // Move to next week
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    }
+
+    return {
+      month: month,
+      year: year,
+      weeks: weeks,
     };
   }
 

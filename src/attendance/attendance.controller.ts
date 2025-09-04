@@ -51,7 +51,7 @@ export class AttendanceController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Post('set-office-location')
-  async setOfficeLocation(@Body() body: { latitude: number; longitude: number }) {
-    return this.attendanceService.setOfficeLocation(body.latitude, body.longitude);
+  async setOfficeLocation(@Body() body: { latitude: number; longitude: number; name: string; address?: string; radius?: number }) {
+    return this.attendanceService.setOfficeLocation(body.latitude, body.longitude, body.name, body.address, body.radius);
   }
 }

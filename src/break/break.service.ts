@@ -36,6 +36,11 @@ export class BreakService {
     return this.breakTypeModel.findByIdAndUpdate(id, dto, { new: true });
   }
 
+  // Admin: Delete break type
+  async deleteBreakType(id: string) {
+    return this.breakTypeModel.findByIdAndDelete(id);
+  }
+
   // Admin: List all break types
   async getBreakTypes() {
     return this.breakTypeModel.find({ isActive: true });

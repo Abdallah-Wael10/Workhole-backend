@@ -3,6 +3,7 @@ import {
   Post,
   Put,
   Get,
+  Delete,
   Body,
   Param,
   Query,
@@ -35,6 +36,14 @@ export class BreakController {
   @Put('type/:id')
   async updateBreakType(@Param('id') id: string, @Body() dto: UpdateBreakDto) {
     return this.breakService.updateBreakType(id, dto);
+  }
+
+  // Admin: Delete break type
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Delete('type/:id')
+  async deleteBreakType(@Param('id') id: string) {
+    return this.breakService.deleteBreakType(id);
   }
 
   // Get break types

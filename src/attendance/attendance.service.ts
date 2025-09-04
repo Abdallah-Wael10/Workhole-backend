@@ -22,9 +22,9 @@ export class AttendanceService {
     private notificationsService: NotificationsService, // Inject NotificationsService
   ) {}
 
-  async setOfficeLocation(latitude: number, longitude: number) {
+  async setOfficeLocation(latitude: number, longitude: number, name: string, address?: string, radius: number = 100) {
     await this.officeLocationModel.deleteMany({});
-    return this.officeLocationModel.create({ latitude, longitude });
+    return this.officeLocationModel.create({ latitude, longitude, name, address, radius });
   }
 
   private getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -67,10 +67,11 @@ export class AttendanceService {
     let warning: string | undefined = undefined;
     if (office) {
       const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
-      if (distance <= 50) {
+      const officeRadius = office.radius || 100; // Use configurable radius, default to 100m
+      if (distance <= officeRadius) {
         location = 'office';
       } else {
-        warning = 'You are not at the office location. Marked as work from home.';
+        warning = `You are ${Math.round(distance)}m away from the office (radius: ${officeRadius}m). Marked as work from home.`;
       }
     } else {
       warning = 'Office location not set. Marked as work from home.';
@@ -127,10 +128,11 @@ export class AttendanceService {
     let warning: string | undefined = undefined;
     if (office) {
       const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
-      if (distance <= 50) {
+      const officeRadius = office.radius || 100; // Use configurable radius, default to 100m
+      if (distance <= officeRadius) {
         location = 'office';
       } else {
-        warning = 'You are not at the office location. Marked as work from home.';
+        warning = `You are ${Math.round(distance)}m away from the office (radius: ${officeRadius}m). Marked as work from home.`;
       }
     } else {
       warning = 'Office location not set. Marked as work from home.';
@@ -330,6 +332,11 @@ export class AttendanceService {
         : null,
       workHoursChart: chartData,
       clockInTime,
+      // Add this new field for today's attendance
+      todayAttendance: {
+        clockIn: todayAttendance?.clockIn || null,
+        clockOut: todayAttendance?.clockOut || null,
+      }
     };
   }
  
