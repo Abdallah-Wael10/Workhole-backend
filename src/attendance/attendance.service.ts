@@ -41,10 +41,10 @@ export class AttendanceService {
     return R * c;
   }
 
-  async clockIn(userId: string, latitude: number, longitude: number) {
+  async clockIn(userId: string, latitude: number, longitude: number, localTime?: string) {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    const clockInTime = now.toTimeString().slice(0, 5);
+    const clockInTime = localTime || now.toTimeString().slice(0, 5); // <-- use localTime if present
     const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
 
     // Check if already clocked in today
@@ -106,10 +106,10 @@ export class AttendanceService {
     return { attendance, warning };
   }
 
-  async clockOut(userId: string, latitude: number, longitude: number) {
+  async clockOut(userId: string, latitude: number, longitude: number, localTime?: string) {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    const clockOutTime = now.toTimeString().slice(0, 5);
+    const clockOutTime = localTime || now.toTimeString().slice(0, 5); // <-- use localTime if present
 
     const attendance = await this.attendanceModel.findOne({
       userId,
