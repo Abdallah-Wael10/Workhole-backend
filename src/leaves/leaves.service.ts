@@ -27,13 +27,58 @@ export class LeavesService {
     dto: CreateLeaveDto,
     attachmentUrl?: string,
   ) {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new Error('User not found');
+
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
-    const timeDiff = endDate.getTime() - startDate.getTime();
-    const days = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+
+    // Get user's holidays array
+    const holidays = user.holidays || [];
+
+    // Helper to get day name
+    const getDayName = (date: Date) =>
+      [
+        'sunday',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+      ][date.getDay()];
+
+    // Count only days that are NOT holidays
+    let days = 0;
+    let d = new Date(startDate);
+    while (d <= endDate) {
+      const dayName = getDayName(d);
+      if (!holidays.includes(dayName)) {
+        days++;
+      }
+      d.setDate(d.getDate() + 1);
+    }
 
     if (days <= 0) {
-      throw new Error('End date must be after start date');
+      throw new Error('No valid leave days selected');
+    }
+
+    // Check available leaves for annual leave only
+    if (dto.leaveType === 'Annual Leave') {
+      // Get approved annual leaves
+      const approvedAnnualLeaves = await this.leaveModel.find({
+        userId,
+        leaveType: 'Annual Leave',
+        status: 'approved',
+      });
+      const usedAnnualDays = approvedAnnualLeaves.reduce(
+        (sum, l) => sum + l.days,
+        0,
+      );
+      const available = (user.availableLeaves || 21) - usedAnnualDays;
+      if (days > available) {
+        throw new Error('You have exceeded your available annual leave days');
+      }
     }
 
     const leave = await this.leaveModel.create({
@@ -65,15 +110,15 @@ export class LeavesService {
 
     // Notify admins
     const admins = await this.userModel.find({ role: 'admin' }, 'email firstName lastName _id');
-    const user = await this.userModel.findById(userId).select('firstName lastName');
+    const userInfo = await this.userModel.findById(userId).select('firstName lastName');
     const userName =
-      user && user.firstName && user.lastName
-        ? `${user.firstName} ${user.lastName}`
+      userInfo && userInfo.firstName && userInfo.lastName
+        ? `${userInfo.firstName} ${userInfo.lastName}`
         : 'موظف غير معروف';
 
     for (const admin of admins) {
       await this.mailService.sendLeaveAdminNotification({
-        employee: user,
+        employee: userInfo,
         leaveType: dto.leaveType,
         startDate,
         endDate,

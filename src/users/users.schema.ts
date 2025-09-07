@@ -39,12 +39,14 @@ export class User {
   @Prop({ enum: ['active', 'suspended'], default: 'active' })
   status: 'active' | 'suspended';
 
-  // New fields
   @Prop({ default: 21 }) // 21 days annual leave
   availableLeaves: number;
 
   @Prop({ default: '/images/profileImages/profile.svg' }) // Default profile image
   profileImage: string;
+
+  @Prop({ type: [String], default: [] }) // List of holidays
+  holidays: string[];
 }
 export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);

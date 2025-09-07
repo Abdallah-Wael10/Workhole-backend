@@ -67,4 +67,10 @@ export class TimerController {
   async getTimerLogs(@Request() req) {
     return this.timerService.getTimerLogs(req.user.id);
   }
+
+  // Get weekly focus time
+  @Get('time')
+  async getWeeklyFocusTime(@Request() req) {
+    return this.timerService.getWeeklyFocusTime(req.user.id);
+  }
 }

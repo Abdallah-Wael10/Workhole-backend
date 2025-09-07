@@ -218,4 +218,32 @@ export class TimerService {
   async getTimerLogs(userId: string) {
     return await this.timerModel.find({ userId }).sort({ startTime: -1 });
   }
+
+  async getWeeklyFocusTime(userId: string) {
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - 6);
+
+    // Get completed focus timers for this week
+    const focusTimers = await this.timerModel.find({
+      userId,
+      status: 'completed',
+      endTime: { $gte: weekStart },
+    });
+
+    // Calculate total focus time in minutes
+    const totalFocusMinutes = focusTimers.reduce((sum, timer) => {
+      return sum + (timer.actualDuration || 0);
+    }, 0);
+
+    // Convert to hours and minutes
+    const hours = Math.floor(totalFocusMinutes / 60);
+    const minutes = totalFocusMinutes % 60;
+
+    return {
+      totalMinutes: totalFocusMinutes,
+      formattedTime: `${hours}h ${minutes}m`,
+      sessionsCount: focusTimers.length
+    };
+  }
 }

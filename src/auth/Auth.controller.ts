@@ -18,10 +18,16 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { profileImageMulterConfig } from '../middleware/multer-config.middleware';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
+import { User } from '../users/users.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @InjectModel(User.name) private userModel: Model<User>,
+  ) {}
 
   @Post('register')
   @UseInterceptors(FileInterceptor('profileImage', profileImageMulterConfig))
@@ -51,8 +57,28 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Request() req) {
-    // Now req.user will have all fields from JWT strategy
-    return req.user;
+    const userDoc = await this.userModel.findById(req.user.id || req.user.sub).select('-passwordHash');
+    if (!userDoc) return null;
+    const user = userDoc.toObject() as any;
+    return {
+      id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      shiftHours: user.shiftHours,
+      locale: user.locale,
+      isActive: user.isActive,
+      availableLeaves: user.availableLeaves,
+      profileImage: user.profileImage,
+      status: user.status,
+      salary: user.salary,
+      shiftStartLocal: user.shiftStartLocal,
+      phone: user.phone,
+      holidays: user.holidays,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   @UseGuards(JwtAuthGuard)

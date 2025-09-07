@@ -8,6 +8,8 @@ import {
   Min,
   IsOptional,
   IsBoolean,
+  IsArray,
+  ArrayUnique,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -66,4 +68,11 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   profileImage?: string;
+
+  // === NEW FIELD ===
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsOptional()
+  holidays?: string[];
 }

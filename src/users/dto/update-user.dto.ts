@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsArray, ArrayUnique } from 'class-validator';
 
 export class UpdateUserDto {
   @IsString()
@@ -12,4 +12,11 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  // === NEW FIELD ===
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsOptional()
+  holidays?: string[];
 }
