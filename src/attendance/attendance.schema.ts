@@ -36,6 +36,9 @@ export class AttendanceLog {
 
   @Prop({ default: 0 })
   breakMinutes: number; // total break time taken
+
+  @Prop()
+  officeName?: string;
 }
 
 export type AttendanceLogDocument = AttendanceLog & Document;

@@ -54,4 +54,28 @@ export class AttendanceController {
   async setOfficeLocation(@Body() body: { latitude: number; longitude: number; name: string; address?: string; radius?: number }) {
     return this.attendanceService.setOfficeLocation(body.latitude, body.longitude, body.name, body.address, body.radius);
   }
+
+  // Admin: View all offices
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Get('offices')
+  async getAllOffices() {
+    return this.attendanceService.getAllOffices();
+  }
+
+  // Admin: Edit office details
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Post('edit-office')
+  async editOffice(@Body() body: { id: string; name?: string; address?: string; latitude?: number; longitude?: number; radius?: number }) {
+    return this.attendanceService.editOffice(body);
+  }
+
+  // Admin: Delete an office
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  @Post('delete-office')
+  async deleteOffice(@Body() body: { id: string }) {
+    return this.attendanceService.deleteOffice(body.id);
+  }
 }

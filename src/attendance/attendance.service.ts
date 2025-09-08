@@ -7,6 +7,7 @@ import { UserBreak, UserBreakDocument } from '../break/break.schema';
 import { OfficeLocation, OfficeLocationDocument } from './office-location.schema';
 import { MailService } from '../mail/mail.service';
 import { NotificationsService } from '../notifications/notifications.service'; // Add import
+import * as moment from 'moment-timezone';
 
 @Injectable()
 export class AttendanceService {
@@ -23,7 +24,7 @@ export class AttendanceService {
   ) {}
 
   async setOfficeLocation(latitude: number, longitude: number, name: string, address?: string, radius: number = 100) {
-    await this.officeLocationModel.deleteMany({});
+    // شيل deleteMany
     return this.officeLocationModel.create({ latitude, longitude, name, address, radius });
   }
 
@@ -42,10 +43,11 @@ export class AttendanceService {
   }
 
   async clockIn(userId: string, latitude: number, longitude: number) {
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    const clockInTime = now.toTimeString().slice(0, 5);
-    const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+    // استخدم توقيت القاهرة
+    const nowCairo = moment().tz('Africa/Cairo');
+    const today = nowCairo.format('YYYY-MM-DD');
+    const clockInTime = nowCairo.format('HH:mm');
+    const dayName = nowCairo.format('dddd'); // اسم اليوم بالإنجليزي
 
     // Check if already clocked in today
     const existing = await this.attendanceModel.findOne({
@@ -62,19 +64,27 @@ export class AttendanceService {
     const isLate = clockInTime > shiftStart;
 
     // Get office location
-    const office = await this.officeLocationModel.findOne();
+    const offices = await this.officeLocationModel.find();
     let location: 'office' | 'home' = 'home';
+    let officeName: string | undefined = undefined;
     let warning: string | undefined = undefined;
-    if (office) {
-      const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
-      const officeRadius = office.radius || 100; // Use configurable radius, default to 100m
-      if (distance <= officeRadius) {
-        location = 'office';
-      } else {
-        warning = `You are ${Math.round(distance)}m away from the office (radius: ${officeRadius}m). Marked as work from home.`;
+
+    if (offices.length > 0) {
+      // دور على أقرب فرع المستخدم جواه
+      for (const office of offices) {
+        const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
+        const officeRadius = office.radius || 100;
+        if (distance <= officeRadius) {
+          location = 'office';
+          officeName = office.name;
+          break;
+        }
+      }
+      if (location === 'home') {
+        warning = `You are not inside any office radius. Marked as work from home.`;
       }
     } else {
-      warning = 'Office location not set. Marked as work from home.';
+      warning = 'No office locations set. Marked as work from home.';
     }
 
     const attendance = await this.attendanceModel.findOneAndUpdate(
@@ -86,6 +96,7 @@ export class AttendanceService {
         clockIn: clockInTime,
         location,
         status: isLate ? 'late' : 'present',
+        officeName, // ممكن تضيفها في السكيمة لو حابب
       },
       { upsert: true, new: true },
     );
@@ -93,7 +104,7 @@ export class AttendanceService {
     // Send clock-in email
     this.mailService.sendClockInEmail({
       userId: user,
-      checkInTime: now,
+      checkInTime: nowCairo.toDate(),
       date: today,
       location,
       status: isLate ? 'late' : 'present',
@@ -107,9 +118,9 @@ export class AttendanceService {
   }
 
   async clockOut(userId: string, latitude: number, longitude: number) {
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    const clockOutTime = now.toTimeString().slice(0, 5);
+    const nowCairo = moment().tz('Africa/Cairo');
+    const today = nowCairo.format('YYYY-MM-DD');
+    const clockOutTime = nowCairo.format('HH:mm');
 
     const attendance = await this.attendanceModel.findOne({
       userId,
@@ -123,19 +134,26 @@ export class AttendanceService {
     }
 
     // Get office location
-    const office = await this.officeLocationModel.findOne();
+    const offices = await this.officeLocationModel.find();
     let location: 'office' | 'home' = 'home';
+    let officeName: string | undefined = undefined;
     let warning: string | undefined = undefined;
-    if (office) {
-      const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
-      const officeRadius = office.radius || 100; // Use configurable radius, default to 100m
-      if (distance <= officeRadius) {
-        location = 'office';
-      } else {
-        warning = `You are ${Math.round(distance)}m away from the office (radius: ${officeRadius}m). Marked as work from home.`;
+
+    if (offices.length > 0) {
+      for (const office of offices) {
+        const distance = this.getDistanceMeters(latitude, longitude, office.latitude, office.longitude);
+        const officeRadius = office.radius || 100;
+        if (distance <= officeRadius) {
+          location = 'office';
+          officeName = office.name;
+          break;
+        }
+      }
+      if (location === 'home') {
+        warning = `You are not inside any office radius. Marked as work from home.`;
       }
     } else {
-      warning = 'Office location not set. Marked as work from home.';
+      warning = 'No office locations set. Marked as work from home.';
     }
 
     // Calculate work minutes
@@ -153,13 +171,14 @@ export class AttendanceService {
     attendance.workMinutes = workMinutes;
     attendance.isOvertime = isOvertime;
     attendance.location = location;
+    attendance.officeName = officeName; // لو ضفتها في السكيمة
     await attendance.save();
 
     // Send clock-out email
     this.mailService.sendClockOutEmail({
       userId: user,
       checkInTime: attendance.clockIn,
-      checkOutTime: now,
+      checkOutTime: nowCairo.toDate(),
       date: today,
       workMinutes,
       location,
@@ -390,6 +409,7 @@ export class AttendanceService {
         : '0h',
       status: a.status,
       location: a.location,
+      officeName: a.officeName || null, // أضف هذا السطر
     }));
 
     return {
@@ -444,6 +464,19 @@ export class AttendanceService {
       status: a.status,
       location: a.location,
     }));
+  }
+
+  async getAllOffices() {
+    return this.officeLocationModel.find();
+  }
+
+  async editOffice(body: { id: string; name?: string; address?: string; latitude?: number; longitude?: number; radius?: number }) {
+    const { id, ...update } = body;
+    return this.officeLocationModel.findByIdAndUpdate(id, update, { new: true });
+  }
+
+  async deleteOffice(id: string) {
+    return this.officeLocationModel.findByIdAndDelete(id);
   }
 
   // Helper functions
