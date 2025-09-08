@@ -262,7 +262,9 @@ export class AttendanceService {
     // احسب وقت clock in بصيغة ISO لو المستخدم Clocked In
     let clockInTime: string | null = null;
     if (todayAttendance?.clockIn && !todayAttendance?.clockOut) {
-      clockInTime = new Date(`${todayStr}T${todayAttendance.clockIn}:00`).toISOString();
+      // لازم ترجع الوقت بتوقيت القاهرة كـ ISO
+      const cairoClockIn = moment.tz(`${todayStr} ${todayAttendance.clockIn}`, 'YYYY-MM-DD HH:mm', 'Africa/Cairo');
+      clockInTime = cairoClockIn.toISOString();
     }
 
     // Today's breaks
