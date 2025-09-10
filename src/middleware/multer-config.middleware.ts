@@ -1,5 +1,6 @@
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
 const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const allowedDocuments = [
@@ -27,6 +28,11 @@ export const productImagesMulterConfig = {
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 };
 
+// Ensure the directory exists before using it
+const profileImagesDir = './images/profileImages';
+if (!existsSync(profileImagesDir)) {
+  mkdirSync(profileImagesDir, { recursive: true });
+}
 export const profileImageMulterConfig = {
   storage: diskStorage({
     destination: './images/profileImages',
@@ -66,3 +72,4 @@ export const leaveAttachmentMulterConfig = {
   },
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 };
+

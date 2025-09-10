@@ -55,9 +55,9 @@ export class DashboardService {
     
     // Get a wider range to include days from adjacent months that might show in the week grid
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - 7); // Go back a week
+    startDate.setDate(startDate.getDate() - 14); // Go back 2 weeks to cover all possible calendar days
     const endDate = new Date(lastDay);
-    endDate.setDate(endDate.getDate() + 7); // Go forward a week
+    endDate.setDate(endDate.getDate() + 14); // Go forward 2 weeks
     
     const monthAttendance = await this.attendanceModel.find({
       userId,
@@ -94,20 +94,21 @@ export class DashboardService {
     const firstDayOfMonth = new Date(year, month - 1, 1);
     const lastDayOfMonth = new Date(year, month, 0);
     
-    // Find the first Sunday on or before the first day of the month
+    // Find the first Monday on or before the first day of the month (Monday = 1)
     let weekStart = new Date(firstDayOfMonth);
-    while (weekStart.getDay() !== 0) { // 0 is Sunday
+    while (weekStart.getDay() !== 1) { // 1 is Monday
       weekStart.setDate(weekStart.getDate() - 1);
     }
 
     const weeks: Week[] = [];
     let currentWeekStart = new Date(weekStart);
+    let weekNumber = 1;
 
-    // Generate EXACTLY 4 weeks for consistent layout
-    for (let weekNumber = 1; weekNumber <= 4; weekNumber++) {
+    // Generate weeks until we cover the entire month
+    while (true) {
       const weekDays: WeekDay[] = [];
 
-      // Generate exactly 7 days for each week (Sun-Sat)
+      // Generate exactly 7 days for each week (Mon-Sun)
       for (let dayNum = 0; dayNum < 7; dayNum++) {
         const currentDay = new Date(currentWeekStart);
         currentDay.setDate(currentWeekStart.getDate() + dayNum);
@@ -115,7 +116,8 @@ export class DashboardService {
         // Check if this day belongs to our target month
         const isCurrentMonth = currentDay.getMonth() === month - 1;
 
-        const dateStr = currentDay.toISOString().split('T')[0];
+        // FIXED: Use local date format instead of UTC
+        const dateStr = this.formatDateLocal(currentDay);
         const activeWorkHours = attendanceMap.get(dateStr) || 0;
         
         weekDays.push({
@@ -123,11 +125,11 @@ export class DashboardService {
           workHours: activeWorkHours, // This is now ACTIVE work hours
           isCurrentMonth: isCurrentMonth,
           dayOfMonth: currentDay.getDate(),
-          dayOfWeek: dayNum, // 0=Sun, 1=Mon, ..., 6=Sat
+          dayOfWeek: dayNum, // 0=Mon, 1=Tue, ..., 6=Sun
         });
       }
 
-      // Always add the week (exactly 4 weeks)
+      // Add the week
       weeks.push({
         weekNumber: weekNumber,
         days: weekDays,
@@ -135,6 +137,19 @@ export class DashboardService {
 
       // Move to next week
       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      weekNumber++;
+
+      // Stop when we've covered the entire month and have at least 4 weeks
+      // Check if the current week start is beyond the last day of the month
+      // and we have at least 4 weeks
+      if (currentWeekStart > lastDayOfMonth && weekNumber > 4) {
+        break;
+      }
+
+      // Safety break to prevent infinite loops (max 6 weeks)
+      if (weekNumber > 6) {
+        break;
+      }
     }
 
     return {
@@ -142,6 +157,14 @@ export class DashboardService {
       year: year,
       weeks: weeks,
     };
+  }
+
+  // Helper method to format date in local timezone (YYYY-MM-DD)
+  private formatDateLocal(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private minutesToHoursMinutes(minutes: number): string {
