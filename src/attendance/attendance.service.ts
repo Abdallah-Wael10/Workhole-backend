@@ -435,6 +435,75 @@ export class AttendanceService {
     if (range === 'today') {
       startDate = today.toISOString().split('T')[0];
       endDate = startDate;
+
+      // هات كل المستخدمين
+      const allUsers = await this.userModel.find({}, 'firstName lastName email holidays');
+      // هات كل الحضور النهاردة
+      const allAttendance = await this.attendanceModel
+        .find({ date: startDate })
+        .populate('userId', 'firstName lastName email');
+      const attendanceMap = new Map();
+      allAttendance.forEach(a => {
+        attendanceMap.set(`${a.userId._id}_${a.date}`, a);
+      });
+
+      type AttendanceResult = {
+        user: any;
+        date: string;
+        day: string;
+        clockIn: string;
+        clockOut: string;
+        workHours: string;
+        status: string;
+        location: string;
+      };
+      const results: AttendanceResult[] = [];
+
+      for (const user of allUsers) {
+        const userHolidays: string[] = user.holidays || [];
+        const dayName = new Date(startDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        // لو النهاردة holiday عند اليوزر skip
+        if (userHolidays.includes(dayName)) continue;
+        const key = `${user._id}_${startDate}`;
+        const attendance = attendanceMap.get(key);
+        if (attendance) {
+          results.push({
+            user: {
+              _id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+            },
+            date: startDate,
+            day: dayName,
+            clockIn: attendance.clockIn || 'N/A',
+            clockOut: attendance.clockOut || 'N/A',
+            workHours: attendance.workMinutes
+              ? this.minutesToHoursMinutes(attendance.workMinutes)
+              : '0h',
+            status: attendance.status,
+            location: attendance.location,
+          });
+        } else {
+          results.push({
+            user: {
+              _id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+            },
+            date: startDate,
+            day: dayName,
+            clockIn: 'N/A',
+            clockOut: 'N/A',
+            workHours: '0h',
+            status: 'absent',
+            location: 'N/A',
+          });
+        }
+      }
+
+      return results;
     } else if (range === 'lastWeek') {
       const lastWeek = new Date(today);
       lastWeek.setDate(today.getDate() - 7);
@@ -450,6 +519,87 @@ export class AttendanceService {
       endDate = startDate;
     }
 
+    // لو lastWeek رجع فقط أيام الغياب بدون holidays
+    if (range === 'lastWeek') {
+      const allUsers = await this.userModel.find({}, 'firstName lastName email holidays');
+      const allAttendance = await this.attendanceModel
+        .find({ date: { $gte: startDate, $lte: endDate } })
+        .populate('userId', 'firstName lastName email');
+      const attendanceMap = new Map();
+      allAttendance.forEach(a => {
+        attendanceMap.set(`${a.userId._id}_${a.date}`, a);
+      });
+
+      const dateList: string[] = [];
+      let d = new Date(startDate);
+      const end = new Date(endDate);
+      while (d <= end) {
+        dateList.push(d.toISOString().split('T')[0]);
+        d.setDate(d.getDate() + 1);
+      }
+
+      type AttendanceResult = {
+        user: any;
+        date: string;
+        day: string;
+        clockIn: string;
+        clockOut: string;
+        workHours: string;
+        status: string;
+        location: string;
+      };
+      const results: AttendanceResult[] = [];
+
+      for (const user of allUsers) {
+        const userHolidays: string[] = user.holidays || [];
+        for (const date of dateList) {
+          const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+          if (userHolidays.includes(dayName)) continue;
+          const key = `${user._id}_${date}`;
+          const attendance = attendanceMap.get(key);
+          if (attendance) {
+            results.push({
+              user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+              },
+              date,
+              day: dayName,
+              clockIn: attendance.clockIn || 'N/A',
+              clockOut: attendance.clockOut || 'N/A',
+              workHours: attendance.workMinutes
+                ? this.minutesToHoursMinutes(attendance.workMinutes)
+                : '0h',
+              status: attendance.status,
+              location: attendance.location,
+            });
+          } else {
+            results.push({
+              user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+              },
+              date,
+              day: dayName,
+              clockIn: 'N/A',
+              clockOut: 'N/A',
+              workHours: '0h',
+              status: 'absent',
+              location: 'N/A',
+            });
+          }
+        }
+      }
+
+      results.sort((a, b) => a.date.localeCompare(b.date));
+      return results;
+    }
+
+    // باقي الفلاتر زي ما هي
     const allAttendance = await this.attendanceModel
       .find({ date: { $gte: startDate, $lte: endDate } })
       .populate('userId', 'firstName lastName email');
