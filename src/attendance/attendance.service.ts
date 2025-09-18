@@ -514,6 +514,87 @@ export class AttendanceService {
       lastMonth.setMonth(today.getMonth() - 1);
       startDate = lastMonth.toISOString().split('T')[0];
       endDate = today.toISOString().split('T')[0];
+
+      // Get all users
+      const allUsers = await this.userModel.find({}, 'firstName lastName email holidays');
+      // Get all attendance logs for last month
+      const allAttendance = await this.attendanceModel
+        .find({ date: { $gte: startDate, $lte: endDate } })
+        .populate('userId', 'firstName lastName email');
+
+      // Map userId to logs
+      const userLogsMap = new Map<string, any[]>();
+      allAttendance.forEach(a => {
+        const uid = a.userId._id.toString();
+        if (!userLogsMap.has(uid)) {
+          userLogsMap.set(uid, []);
+        }
+        userLogsMap.get(uid)!.push(a);
+      });
+
+      type UserMonthStats = {
+        user: any;
+        present: number;
+        absent: number;
+        late: number;
+        avgClockIn: string;
+        office: number;
+        home: number;
+      };
+
+      const results: UserMonthStats[] = [];
+
+      for (const user of allUsers) {
+        const logs = userLogsMap.get(user._id.toString()) || [];
+        let present = 0, absent = 0, late = 0, office = 0, home = 0;
+        let clockIns: number[] = [];
+
+        logs.forEach(a => {
+          if (a.status === 'present') present++;
+          if (a.status === 'absent') absent++;
+          if (a.status === 'late') late++;
+          if (a.location === 'office') office++;
+          if (a.location === 'home') home++;
+          if (a.clockIn) clockIns.push(this.timeToMinutes(a.clockIn));
+        });
+
+        // Count absents for days with no attendance log (excluding holidays)
+        const dateList: string[] = [];
+        let d = new Date(startDate);
+        const end = new Date(endDate);
+        while (d <= end) {
+          dateList.push(d.toISOString().split('T')[0]);
+          d.setDate(d.getDate() + 1);
+        }
+        const userHolidays: string[] = user.holidays || [];
+        for (const date of dateList) {
+          const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+          if (userHolidays.includes(dayName)) continue;
+          const found = logs.find(a => a.date === date);
+          if (!found) absent++;
+        }
+
+        const avgClockIn = clockIns.length
+          ? this.minutesToTime(clockIns.reduce((sum, t) => sum + t, 0) / clockIns.length)
+          : 'N/A';
+
+        results.push({
+          user: {
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+          },
+          present,
+          absent,
+          late,
+          avgClockIn,
+          office,
+          home,
+        });
+      }
+
+      return results;
     } else {
       startDate = today.toISOString().split('T')[0];
       endDate = startDate;
@@ -618,6 +699,7 @@ export class AttendanceService {
     }));
   }
 
+  
   async getAllOffices() {
     return this.officeLocationModel.find();
   }
