@@ -16,6 +16,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    // Only allow access tokens
+    if (payload.type !== 'access') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
     const user = await this.userModel
       .findById(payload.sub)
       .select('-passwordHash');

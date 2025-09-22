@@ -77,14 +77,35 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    const payload = {
+    // Generate access token (48 hours)
+    const accessTokenPayload = {
       sub: user._id,
       email: user.email,
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,
+      type: 'access',
     };
-    const token = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(accessTokenPayload, {
+      expiresIn: '48h',
+    });
+
+    // Generate refresh token (20 days)
+    const refreshTokenPayload = {
+      sub: user._id,
+      email: user.email,
+      type: 'refresh',
+    };
+    const refreshToken = this.jwtService.sign(refreshTokenPayload, {
+      expiresIn: '20d',
+    });
+
+    // Store refresh token in database
+    const refreshTokenExpires = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000); // 20 days
+    await this.userModel.findByIdAndUpdate(user._id, {
+      refreshToken,
+      refreshTokenExpires,
+    });
 
     // Send login notification
     await this.mailService.sendLoginMail(
@@ -93,7 +114,8 @@ export class AuthService {
     );
 
     return {
-      access_token: token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
       user: {
         firstName: user.firstName,
         lastName: user.lastName,
@@ -106,6 +128,68 @@ export class AuthService {
         profileImage: user.profileImage,
       },
     };
+  }
+
+  async refreshToken(refreshToken: string) {
+    try {
+      // Verify refresh token
+      const payload = this.jwtService.verify(refreshToken);
+      
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('Invalid token type');
+      }
+
+      // Check if user exists and refresh token matches
+      const user = await this.userModel.findOne({
+        _id: payload.sub,
+        refreshToken,
+        refreshTokenExpires: { $gt: new Date() },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+
+      // Generate new access token
+      const accessTokenPayload = {
+        sub: user._id,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        type: 'access',
+      };
+      const accessToken = this.jwtService.sign(accessTokenPayload, {
+        expiresIn: '48h',
+      });
+
+      return {
+        access_token: accessToken,
+        user: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          shiftHours: user.shiftHours,
+          locale: user.locale,
+          isActive: user.isActive,
+          availableLeaves: user.availableLeaves,
+          profileImage: user.profileImage,
+        },
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+  }
+
+  async logout(userId: string) {
+    // Remove refresh token from database
+    await this.userModel.findByIdAndUpdate(userId, {
+      refreshToken: null,
+      refreshTokenExpires: null,
+    });
+
+    return { message: 'Logged out successfully' };
   }
 
   async forgetPassword(dto: ForgetPasswordDto) {
@@ -132,7 +216,7 @@ export class AuthService {
     const hash = await bcrypt.hash(dto.newPassword, 10);
     await this.userModel.updateOne(
       { email: dto.email },
-      { passwordHash: hash },
+      { passwordHash: hash, refreshToken: null, refreshTokenExpires: null },
     );
     await this.passwordResetModel.deleteOne({
       email: dto.email,

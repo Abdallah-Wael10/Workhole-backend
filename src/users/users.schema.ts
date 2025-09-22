@@ -47,6 +47,15 @@ export class User {
 
   @Prop({ type: [String], default: [] }) // List of holidays
   holidays: string[];
+
+  @Prop({ type: String, default: null }) // Refresh token
+  refreshToken: string;
+
+  @Prop({ type: Date, default: null }) // Refresh token expiration
+  refreshTokenExpires: Date;
 }
 export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);
+
+
+

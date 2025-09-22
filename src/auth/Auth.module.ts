@@ -13,7 +13,7 @@ import { PasswordReset, PasswordResetSchema } from './password-reset.schema';
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secret',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1d' },
+      signOptions: { expiresIn: '48h' }, // Default to 48 hours for access tokens
     }),
     MailModule,
     MongooseModule.forFeature([

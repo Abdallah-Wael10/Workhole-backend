@@ -22,7 +22,6 @@ import { User } from '../users/users.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -45,6 +44,11 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Post('refresh')
+  refreshToken(@Body() body: { refresh_token: string }) {
+    return this.authService.refreshToken(body.refresh_token);
+  }
+
   @Post('forget-password')
   forgetPassword(@Body() dto: ForgetPasswordDto) {
     return this.authService.forgetPassword(dto);
@@ -53,6 +57,12 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  async logout(@Request() req) {
+    return this.authService.logout(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
