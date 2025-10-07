@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AttendanceLog, AttendanceLogDocument } from './attendance.schema';
@@ -8,6 +8,7 @@ import { OfficeLocation, OfficeLocationDocument } from './office-location.schema
 import { MailService } from '../mail/mail.service';
 import { NotificationsService } from '../notifications/notifications.service'; // Add import
 import * as moment from 'moment-timezone';
+import { DeviceEventDto } from './dto/device-event.dto';
 
 @Injectable()
 export class AttendanceService {
@@ -22,6 +23,66 @@ export class AttendanceService {
     private mailService: MailService,
     private notificationsService: NotificationsService, // Inject NotificationsService
   ) {}
+
+  // Simple in-memory idempotency store (replace with Redis for prod)
+  private recentEventKeys = new Set<string>();
+  private recentEventQueue: string[] = [];
+  private readonly recentEventMax = 1000;
+
+  private rememberEventKey(key?: string) {
+    if (!key) return;
+    if (this.recentEventKeys.has(key)) return;
+    this.recentEventKeys.add(key);
+    this.recentEventQueue.push(key);
+    if (this.recentEventQueue.length > this.recentEventMax) {
+      const old = this.recentEventQueue.shift();
+      if (old) this.recentEventKeys.delete(old);
+    }
+  }
+
+  private seenEventKey(key?: string): boolean {
+    if (!key) return false;
+    return this.recentEventKeys.has(key);
+  }
+
+  async processDeviceEvent(dto: DeviceEventDto, idempotencyKey?: string) {
+    if (this.seenEventKey(idempotencyKey)) {
+      return { status: 'duplicate', idempotencyKey };
+    }
+
+    // Resolve user
+    let user: UserDocument | null = null;
+    if (dto.employeeId) {
+      user = await this.userModel.findById(dto.employeeId);
+    } else if (dto.email) {
+      user = await this.userModel.findOne({ email: dto.email });
+    } else if (dto.faceName) {
+      // naive mapping: faceName equals firstName or full name
+      const [first, last] = dto.faceName.split(' ');
+      user = await this.userModel.findOne(
+        last ? { firstName: first, lastName: last } : { firstName: first },
+      );
+    }
+    if (!user) {
+      throw new BadRequestException('Unknown employee');
+    }
+
+    // Default lat/long from first office if present
+    const offices = await this.officeLocationModel.find();
+    const office = offices[0];
+    const lat = office?.latitude ?? 0;
+    const lon = office?.longitude ?? 0;
+
+    let result;
+    if (dto.eventType === 'CLOCK_IN') {
+      result = await this.clockIn(user._id.toString(), lat, lon);
+    } else {
+      result = await this.clockOut(user._id.toString(), lat, lon);
+    }
+
+    this.rememberEventKey(idempotencyKey);
+    return { status: 'ok', idempotencyKey, result };
+  }
 
   async setOfficeLocation(latitude: number, longitude: number, name: string, address?: string, radius: number = 100) {
     // شيل deleteMany

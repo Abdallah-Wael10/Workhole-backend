@@ -4,6 +4,7 @@ import {
   Get,
   Body,
   Request,
+  Headers,
   UseGuards,
   Query,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { ClockOutDto } from './dto/clock-out.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { DeviceEventDto } from './dto/device-event.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('/api/attendance')
@@ -37,6 +39,15 @@ export class AttendanceController {
   @Get('stats')
   async getStats(@Request() req, @Body() body, @Query('page') page = 1, @Query('limit') limit = 8) {
     return this.attendanceService.getStats(req.user.id, Number(page), Number(limit));
+  }
+
+  // Device endpoint for Python camera integration
+  @Post('events')
+  async receiveDeviceEvent(
+    @Body() dto: DeviceEventDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.attendanceService.processDeviceEvent(dto, idempotencyKey);
   }
 
   // Admin: View all users attendance
